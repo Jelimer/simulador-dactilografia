@@ -525,7 +525,40 @@ const EvolutionCharts = ({ history, currentLessonId }) => {
 // ==========================================
 // COMPONENTE: PANTALLA DE RESULTADOS DETALLADOS
 // ==========================================
-const TrainingResultsUI = ({ metrics, onRetry, onNext, lessonAttempts, onPlayReplay }) => {
+const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, onPlayReplay }) => {
+    const bgDark = '#3e5c76'; 
+    const circleYellow = '#f4b41a';
+
+    const formatDur = (secs) => {
+        if (!secs) return "0:00";
+        const m = Math.floor(secs / 60);
+        const s = Math.floor(secs % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    };
+
+    if (!metrics) {
+        return (
+            <div className="w-full bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                <div className="bg-white px-6 py-4 border-b flex justify-between items-center">
+                    <button onClick={onBack} className="text-gray-600 hover:text-[#002B5C] font-semibold flex items-center transition-colors text-sm">
+                        <ArrowLeft className="w-4 h-4 mr-2" /> Volver a las lecciones
+                    </button>
+                    <span className="text-sm font-bold text-gray-500 uppercase">Sin Intentos</span>
+                </div>
+                <div className="p-12 text-center flex flex-col items-center">
+                    <div className="bg-blue-50 text-blue-600 p-4 rounded-full mb-4">
+                        <Award className="w-12 h-12 opacity-40" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">Aún no has practicado esta lección</h3>
+                    <p className="text-gray-500 max-w-md mb-6 text-sm">Completa el ejercicio por primera vez para ver tus estadísticas detalladas, precisión de dedos y gráficos de evolución.</p>
+                    <button onClick={onRetry} className="bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow hover:bg-blue-700 transition flex items-center">
+                        <Play className="w-4 h-4 mr-2" /> INICIAR ENTRENAMIENTO
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     const accuracy = metrics.precision;
     let stars = 0;
     if (accuracy >= 98) stars = 5;
@@ -534,17 +567,16 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, lessonAttempts, onPlayRep
     else if (accuracy >= 80) stars = 2;
     else if (accuracy > 0) stars = 1;
 
-    const bgDark = '#3e5c76'; 
-    const circleYellow = '#f4b41a';
-
-    const formatDur = (secs) => {
-        const m = Math.floor(secs / 60);
-        const s = Math.floor(secs % 60).toString().padStart(2, '0');
-        return `${m}:${s}`;
-    };
-
     return (
         <div className="w-full bg-[#f3f4f6] rounded-xl overflow-hidden shadow-xl border border-gray-200">
+            {/* Barra superior con botón de volver */}
+            <div className="bg-white px-6 py-4 border-b flex justify-between items-center">
+                <button onClick={onBack} className="text-gray-600 hover:text-[#002B5C] font-semibold flex items-center transition-colors text-sm">
+                    <ArrowLeft className="w-4 h-4 mr-2" /> Volver a las lecciones
+                </button>
+                <span className="text-sm font-bold text-gray-500 uppercase">Estadísticas de Lección</span>
+            </div>
+
             <div style={{ backgroundColor: bgDark }} className="py-10 px-6 flex flex-col items-center text-white relative">
                 
                 {/* Estrellas */}
@@ -835,11 +867,21 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                         {TRAINING_LESSONS.map((l, idx) => {
                             const attempts = history.filter(h => h.lessonId === l.id);
                             const bestAttempt = attempts.reduce((max, curr) => curr.wpm > max ? curr.wpm : max, 0);
-                            
+                            const latestAttempt = attempts.length > 0 ? attempts[attempts.length - 1] : null;
+
+                            const handleCardClick = (e) => {
+                                // Evitar que se active si hacen clic en un botón directamente
+                                if (e.target.closest('button')) return;
+                                setLessonId(l.id);
+                                setMetrics(latestAttempt);
+                                setPhase('results');
+                            };
+
                             return (
                                 <div 
                                     key={l.id}
-                                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border rounded-xl bg-gray-50 hover:bg-blue-50/40 hover:border-blue-200 transition-all text-left group"
+                                    onClick={handleCardClick}
+                                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border rounded-xl bg-gray-50 hover:bg-blue-50/40 hover:border-blue-200 cursor-pointer transition-all text-left group"
                                 >
                                     <div className="flex items-center">
                                         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center font-bold text-blue-600 shadow mr-4 group-hover:scale-110 transition-transform">
@@ -858,7 +900,10 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                                             </div>
                                         )}
                                         <button 
-                                            onClick={() => startLesson(l.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                startLesson(l.id);
+                                            }}
                                             className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm flex items-center shadow transition-all group-hover:scale-105"
                                         >
                                             Entrenar <Play className="w-4 h-4 ml-2" />
@@ -916,7 +961,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                 </div>
             )}
 
-            {phase === 'results' && metrics && (
+            {phase === 'results' && (
                 <div className="w-full">
                     <TrainingResultsUI 
                         metrics={metrics} 
@@ -929,6 +974,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                                 setPhase('menu');
                             }
                         }} 
+                        onBack={() => setPhase('menu')}
                         lessonAttempts={currentLessonAttempts} 
                         onPlayReplay={handlePlayReplay} 
                     />
