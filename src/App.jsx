@@ -718,7 +718,7 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                     Reproducción de la práctica actual
                 </div>
                 
-                <div className="bg-white rounded-xl p-6 shadow-inner border border-gray-200 mb-8 font-mono text-2xl leading-loose text-center whitespace-pre-wrap">
+                <div className="bg-white rounded-xl p-6 shadow-inner border border-gray-200 mb-8 font-mono text-2xl leading-loose text-center whitespace-pre-wrap break-all">
                      {metrics.text.split('').map((char, idx) => {
                         const hasError = metrics.errorIndices && metrics.errorIndices[idx];
                         const charToShow = char === ' ' ? '␣' : char;
@@ -1017,7 +1017,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                         </div>
                     </div>
 
-                    <div className="w-full p-6 bg-slate-50 rounded-xl border border-gray-150 font-mono text-2xl tracking-wide leading-relaxed text-center mb-6 select-none focus:outline-none shadow-inner whitespace-pre-wrap">
+                    <div className="w-full p-6 bg-slate-50 rounded-xl border border-gray-150 font-mono text-2xl tracking-wide leading-relaxed text-center mb-6 select-none focus:outline-none shadow-inner whitespace-pre-wrap break-all">
                         {lesson.text.split('').map((char, index) => {
                             let charClass = "text-gray-400";
                             const hasError = charsWithErrors[index];
@@ -1075,7 +1075,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     <div className="text-sm text-gray-500 mb-4">
                         Mostrando estadísticas registradas el {replayData.timestamp}
                     </div>
-                    <div className="bg-slate-50 p-6 rounded-xl border border-gray-100 font-mono text-xl mb-6 shadow-inner whitespace-pre-wrap">
+                    <div className="bg-slate-50 p-6 rounded-xl border border-gray-100 font-mono text-xl mb-6 shadow-inner whitespace-pre-wrap break-all">
                         {replayData.text.split('').map((char, index) => {
                             const hasError = replayData.errorIndices && replayData.errorIndices[index];
                             const charToShow = char === ' ' ? '␣' : char;
