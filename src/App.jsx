@@ -567,6 +567,40 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
     else if (accuracy >= 80) stars = 2;
     else if (accuracy > 0) stars = 1;
 
+    // Generar marcas de medidores (ticks) dinámicamente
+    const precisionTicks = [];
+    for (let i = 0; i < 40; i++) {
+        const angle = (i * 360) / 40;
+        const radians = (angle * Math.PI) / 180;
+        const x1 = 70 + 50 * Math.cos(radians);
+        const y1 = 70 + 50 * Math.sin(radians);
+        const x2 = 70 + 44 * Math.cos(radians);
+        const y2 = 70 + 44 * Math.sin(radians);
+        precisionTicks.push(<line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(255,255,255,0.25)" strokeWidth="1" />);
+    }
+
+    const speedTicks = [];
+    for (let i = 0; i < 40; i++) {
+        const angle = (i * 360) / 40;
+        const radians = (angle * Math.PI) / 180;
+        const x1 = 70 + 50 * Math.cos(radians);
+        const y1 = 70 + 50 * Math.sin(radians);
+        const x2 = 70 + 44 * Math.cos(radians);
+        const y2 = 70 + 44 * Math.sin(radians);
+        speedTicks.push(<line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(255,255,255,0.25)" strokeWidth="1" />);
+    }
+
+    const durationTicks = [];
+    for (let i = 0; i < 12; i++) {
+        const angle = (i * 360) / 12;
+        const radians = (angle * Math.PI) / 180;
+        const x1 = 70 + 50 * Math.cos(radians);
+        const y1 = 70 + 50 * Math.sin(radians);
+        const x2 = 70 + 40 * Math.cos(radians);
+        const y2 = 70 + 40 * Math.sin(radians);
+        durationTicks.push(<line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" />);
+    }
+
     return (
         <div className="w-full bg-[#f3f4f6] rounded-xl overflow-hidden shadow-xl border border-gray-200">
             {/* Barra superior con botón de volver */}
@@ -582,7 +616,7 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                 {/* Estrellas */}
                 <div className="flex space-x-2 mb-8">
                     {[1,2,3,4,5].map(i => (
-                        <Star key={i} className={`w-10 h-10 ${i <= stars ? 'text-white fill-white' : 'text-gray-500 opacity-20'} transform ${i===3?'-translate-y-4':(i===2||i===4)?'-translate-y-2':''}`} />
+                        <Star key={i} className={`w-10 h-10 ${i <= stars ? 'text-yellow-400 fill-yellow-400 filter drop-shadow-[0_2px_6px_rgba(234,179,8,0.4)]' : 'text-slate-500 opacity-30'} transform ${i===3?'-translate-y-4':(i===2||i===4)?'-translate-y-2':''}`} />
                     ))}
                 </div>
 
@@ -605,25 +639,66 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                 </div>
 
                 {/* Medidores */}
-                <div className="flex justify-center items-center space-x-12 w-full max-w-3xl">
-                    <div className="relative w-36 h-36 flex flex-col items-center justify-center rounded-full border-4" style={{ borderColor: circleYellow, background: 'rgba(0,0,0,0.2)' }}>
-                        <div className="text-3xl font-black">{Math.round(metrics.precision)}%</div>
-                        <div className="text-[10px] uppercase tracking-widest mt-0.5 opacity-85">precisión real</div>
-                        <div className="text-xs font-semibold opacity-80">Min. req: 80%</div>
-                        <div className="absolute -bottom-8 font-bold uppercase tracking-widest text-xs text-gray-300">precisión</div>
+                <div className="flex flex-col md:flex-row justify-center items-center space-y-8 md:space-y-0 md:space-x-8 lg:space-x-12 w-full max-w-4xl px-4 mt-6">
+                    {/* Medidor de Precisión */}
+                    <div className="flex items-center">
+                        <div className="hidden lg:flex flex-col items-end text-right mr-4 text-white/80 max-w-[120px]">
+                            <span className="text-sm font-bold text-yellow-400">80%</span>
+                            <span className="text-[10px] leading-tight uppercase font-medium">precisión mínima</span>
+                            <div className="w-10 h-px bg-white/30 mt-1"></div>
+                        </div>
+
+                        <div className="relative w-36 h-36 flex flex-col items-center justify-center">
+                            <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 140 140">
+                                <circle cx="70" cy="70" r="50" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
+                                <circle cx="70" cy="70" r="50" fill="none" stroke={circleYellow} strokeWidth="6" 
+                                        strokeDasharray="314.16" strokeDashoffset={314.16 - (314.16 * Math.min(100, Math.max(0, metrics.precision))) / 100}
+                                        strokeLinecap="round" />
+                                {precisionTicks}
+                            </svg>
+                            <div className="z-10 text-center">
+                                <div className="text-3xl font-black">{Math.round(metrics.precision)}%</div>
+                                <div className="text-[9px] uppercase tracking-widest mt-0.5 text-white/70">precisión real</div>
+                                <div className="text-[10px] font-semibold text-yellow-400/90">{Math.round(metrics.precision)}%</div>
+                            </div>
+                            <div className="absolute -bottom-8 font-bold uppercase tracking-widest text-[11px] text-gray-300">precisión</div>
+                        </div>
                     </div>
 
-                    <div className="relative w-28 h-28 flex flex-col items-center justify-center rounded-full bg-white/10 border-4 border-white/20">
-                        <div className="text-2xl font-bold">{formatDur(metrics.duration)}</div>
-                        <div className="text-[9px] uppercase opacity-70">min : segundos</div>
-                        <div className="absolute -bottom-10 font-bold uppercase tracking-widest text-xs text-gray-300">duración</div>
+                    {/* Medidor de Duración */}
+                    <div className="relative w-32 h-32 flex flex-col items-center justify-center">
+                        <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 140 140">
+                            {durationTicks}
+                        </svg>
+                        <div className="z-10 text-center">
+                            <div className="text-2xl font-bold">{formatDur(metrics.duration)}</div>
+                            <div className="text-[8px] uppercase tracking-widest text-white/60">min:segundos</div>
+                        </div>
+                        <div className="absolute -bottom-10 font-bold uppercase tracking-widest text-[11px] text-gray-300">duración</div>
                     </div>
 
-                    <div className="relative w-36 h-36 flex flex-col items-center justify-center rounded-full border-4" style={{ borderColor: circleYellow, background: 'rgba(0,0,0,0.2)' }}>
-                        <div className="text-4xl font-black">{Math.round(metrics.wpm)}</div>
-                        <div className="text-[10px] uppercase tracking-widest mt-0.5 opacity-85">ppm</div>
-                        <div className="text-xs font-semibold opacity-80">Objetivo: 20+</div>
-                        <div className="absolute -bottom-8 font-bold uppercase tracking-widest text-xs text-gray-300">velocidad</div>
+                    {/* Medidor de Velocidad */}
+                    <div className="flex items-center">
+                        <div className="relative w-36 h-36 flex flex-col items-center justify-center">
+                            <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 140 140">
+                                <circle cx="70" cy="70" r="50" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
+                                <circle cx="70" cy="70" r="50" fill="none" stroke={circleYellow} strokeWidth="6" 
+                                        strokeDasharray="314.16" strokeDashoffset={314.16 - (314.16 * Math.min(100, (metrics.wpm / 60) * 100)) / 100}
+                                        strokeLinecap="round" />
+                                {speedTicks}
+                            </svg>
+                            <div className="z-10 text-center">
+                                <div className="text-3xl font-black">{Math.round(metrics.wpm)}</div>
+                                <div className="text-[9px] uppercase tracking-widest mt-0.5 text-white/70">ppm</div>
+                            </div>
+                            <div className="absolute -bottom-8 font-bold uppercase tracking-widest text-[11px] text-gray-300">velocidad</div>
+                        </div>
+
+                        <div className="hidden lg:flex flex-col items-start text-left ml-4 text-white/80 max-w-[120px]">
+                            <span className="text-sm font-bold text-yellow-400">10 ppm</span>
+                            <span className="text-[10px] leading-tight uppercase font-medium">Requisito: 3 ppm</span>
+                            <div className="w-10 h-px bg-white/30 mt-1"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -643,20 +718,21 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                     Reproducción de la práctica actual
                 </div>
                 
-                <div className="bg-white rounded-xl p-6 shadow-inner border border-gray-200 mb-8 font-mono text-xl leading-loose text-center">
-                     {metrics.text.split(' ').map((word, wIdx) => (
-                        <span key={wIdx} className="inline-block mr-3 mb-1 relative group">
-                            <span className="absolute -top-4 left-1/2 transform -translate-x-1/2 text-[9px] text-gray-400 font-sans tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                {Math.max(10, Math.round(metrics.wpm + (Math.sin(wIdx)*5)))} ppm
+                <div className="bg-white rounded-xl p-6 shadow-inner border border-gray-200 mb-8 font-mono text-2xl leading-loose text-center whitespace-pre-wrap">
+                     {metrics.text.split('').map((char, idx) => {
+                        const hasError = metrics.errorIndices && metrics.errorIndices[idx];
+                        const charToShow = char === ' ' ? '␣' : char;
+                        const charClass = hasError 
+                            ? "bg-red-100 text-red-700 border-b-2 border-red-500 font-semibold" 
+                            : "bg-green-50 text-green-700";
+                        return (
+                            <span key={idx} className={`${charClass} px-0.5 mx-[1px] rounded inline-block`}>
+                                {charToShow}
                             </span>
-                            {word.split('').map((char, cIdx) => (
-                                <span key={cIdx} className="px-0.5 rounded bg-green-50 text-green-700">
-                                    {char}
-                                </span>
-                            ))}
-                        </span>
-                     ))}
+                        );
+                     })}
                 </div>
+
 
                 <div className="flex justify-center space-x-4 mb-8">
                     <button onClick={onRetry} className="bg-white text-gray-700 px-8 py-3 rounded-full font-bold shadow-sm hover:shadow transition flex items-center border border-gray-300">
@@ -735,6 +811,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
     const [startTime, setStartTime] = useState(null);
     const [metrics, setMetrics] = useState(null);
     const [replayData, setReplayData] = useState(null);
+    const [charsWithErrors, setCharsWithErrors] = useState({});
 
     const lesson = TRAINING_LESSONS.find(l => l.id === lessonId);
     const containerRef = useRef(null);
@@ -791,7 +868,8 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     duration: durationSecs,
                     correctChars: totalChars,
                     errorChars: errors,
-                    text: lesson.text
+                    text: lesson.text,
+                    errorIndices: charsWithErrors
                 };
 
                 // Agregar al historial de la sesión
@@ -803,7 +881,8 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     duration: durationSecs, 
                     text: lesson.text,
                     correctChars: totalChars,
-                    errorChars: errors
+                    errorChars: errors,
+                    errorIndices: charsWithErrors
                 });
                 setPhase('results');
             }
@@ -811,6 +890,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
             // Reproducir sonido de error
             playTypingSound(false, soundMuted);
             setErrors(e => e + 1);
+            setCharsWithErrors(prev => ({ ...prev, [typedCount]: true }));
             
             // Retroalimentación visual rápida de parpadeo de error
             if (containerRef.current) {
@@ -825,6 +905,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         setTypedCount(0);
         setErrors(0);
         setStartTime(null);
+        setCharsWithErrors({});
         setPhase('typing');
     };
 
@@ -936,17 +1017,18 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                         </div>
                     </div>
 
-                    <div className="w-full p-6 bg-slate-50 rounded-xl border border-gray-150 font-mono text-2xl tracking-wide leading-relaxed text-center mb-6 select-none focus:outline-none shadow-inner">
+                    <div className="w-full p-6 bg-slate-50 rounded-xl border border-gray-150 font-mono text-2xl tracking-wide leading-relaxed text-center mb-6 select-none focus:outline-none shadow-inner whitespace-pre-wrap">
                         {lesson.text.split('').map((char, index) => {
                             let charClass = "text-gray-400";
+                            const hasError = charsWithErrors[index];
                             if (index < typedCount) {
-                                charClass = "text-green-600 bg-green-50";
+                                charClass = hasError ? "text-red-600 bg-red-100 font-semibold border-b border-red-400" : "text-green-600 bg-green-50";
                             } else if (index === typedCount) {
                                 charClass = "text-white bg-blue-600 px-1 rounded animate-pulse";
                             }
                             return (
-                                <span key={index} className={`${charClass} transition-colors duration-100`}>
-                                    {char === ' ' ? ' ' : char}
+                                <span key={index} className={`${charClass} transition-colors duration-100 px-0.5 mx-[1px] rounded`}>
+                                    {char === ' ' ? '␣' : char}
                                 </span>
                             );
                         })}
@@ -993,12 +1075,19 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     <div className="text-sm text-gray-500 mb-4">
                         Mostrando estadísticas registradas el {replayData.timestamp}
                     </div>
-                    <div className="bg-slate-50 p-6 rounded-xl border border-gray-100 font-mono text-xl mb-6 shadow-inner">
-                        {replayData.text.split('').map((char, index) => (
-                            <span key={index} className="text-green-600 bg-green-50 px-0.5">
-                                {char}
-                            </span>
-                        ))}
+                    <div className="bg-slate-50 p-6 rounded-xl border border-gray-100 font-mono text-xl mb-6 shadow-inner whitespace-pre-wrap">
+                        {replayData.text.split('').map((char, index) => {
+                            const hasError = replayData.errorIndices && replayData.errorIndices[index];
+                            const charToShow = char === ' ' ? '␣' : char;
+                            const charClass = hasError 
+                                ? "bg-red-100 text-red-700 border-b-2 border-red-500 font-semibold" 
+                                : "bg-green-50 text-green-700";
+                            return (
+                                <span key={index} className={`${charClass} px-0.5 mx-[1px] rounded inline-block`}>
+                                    {charToShow}
+                                </span>
+                            );
+                        })}
                     </div>
                     <div className="grid grid-cols-3 gap-6 max-w-md mx-auto mb-6">
                         <div className="p-4 bg-blue-50 rounded-xl border">
@@ -1025,7 +1114,20 @@ const Entrenamiento = ({ history, onAddHistory }) => {
 // ==========================================
 export default function App() {
     const [activeTab, setActiveTab] = useState('simulador');
-    const [history, setHistory] = useState([]);
+    const [history, setHistory] = useState(() => {
+        try {
+            const saved = localStorage.getItem('dactilografia_historial');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('dactilografia_historial', JSON.stringify(history));
+        } catch (e) {}
+    }, [history]);
 
     const handleAddHistory = (item) => {
         setHistory(prev => [...prev, item]);
