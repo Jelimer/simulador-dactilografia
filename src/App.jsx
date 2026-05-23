@@ -189,11 +189,16 @@ const Header = ({ activeTab, setActiveTab }) => (
                         className={`font-semibold px-1 py-5 border-b-2 transition-colors flex items-center ${activeTab === 'entrenamiento' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-blue-600'}`}>
                         <Star className="w-4 h-4 mr-1" fill="currentColor"/> Entrenamiento de Dedos
                     </button>
+                    <button 
+                        onClick={() => setActiveTab('teoria')}
+                        className={`font-semibold px-1 py-5 border-b-2 transition-colors flex items-center ${activeTab === 'teoria' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-blue-600'}`}>
+                        <Award className="w-4 h-4 mr-1"/> Preparación Teórica
+                    </button>
                 </nav>
             </div>
         </div>
         <div className="bg-[#001f40] text-white text-center py-2 text-sm font-medium tracking-wide">
-            {activeTab === 'simulador' ? 'Simulador de Examen de Dactilografía' : 'Entrenamiento Interactivo de Dedos (Estilo TypingClub)'}
+            {activeTab === 'simulador' ? 'Simulador de Examen de Dactilografía' : activeTab === 'entrenamiento' ? 'Entrenamiento Interactivo de Dedos (Estilo TypingClub)' : 'Preparación Teórica - Generador de Audio de Estudio'}
         </div>
     </header>
 );
@@ -1283,6 +1288,387 @@ const Entrenamiento = ({ history, onAddHistory }) => {
     );
 };
 
+
+const PreparacionTeorica = () => {
+    const [text, setText] = useState('');
+    const [speed, setSpeed] = useState('1.0');
+    const [engine, setEngine] = useState('neural'); // 'neural' o 'system'
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [playing, setPlaying] = useState(false);
+    const [mp3Url, setMp3Url] = useState('');
+    const [error, setError] = useState('');
+    const [availableVoices, setAvailableVoices] = useState([]);
+    
+    const audioRef = useRef(null);
+
+    // Cargar voces del sistema
+    useEffect(() => {
+        const updateVoices = () => {
+            if (typeof window !== 'undefined' && window.speechSynthesis) {
+                setAvailableVoices(window.speechSynthesis.getVoices());
+            }
+        };
+        updateVoices();
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+            window.speechSynthesis.onvoiceschanged = updateVoices;
+        }
+        return () => {
+            if (typeof window !== 'undefined' && window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, []);
+
+    const activeVoice = useMemo(() => {
+        let v = availableVoices.find(voice => voice.lang.toLowerCase() === 'es-ar' || voice.lang.toLowerCase().replace('_', '-') === 'es-ar');
+        if (!v) v = availableVoices.find(voice => voice.lang.toLowerCase().startsWith('es'));
+        return v;
+    }, [availableVoices]);
+
+    // Calcular palabras e info del texto
+    const wordCount = useMemo(() => {
+        return text.trim() ? text.trim().split(/\s+/).length : 0;
+    }, [text]);
+
+    const estimatedDuration = useMemo(() => {
+        // Duración aproximada a 130 palabras por minuto
+        const totalSeconds = Math.round((wordCount / 130) * 60);
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        return `${m}m ${s}s`;
+    }, [wordCount]);
+
+    const speakTextNative = (textToSpeak, rate) => {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        
+        // Google TTS en navegador suele fallar con textos excesivamente largos de una sola vez
+        // por lo que dividimos en oraciones de hasta 200 caracteres para el habla local también
+        const chunks = splitTextIntoChunks(textToSpeak, 180);
+        let currentChunkIdx = 0;
+
+        const speakNext = () => {
+            if (currentChunkIdx >= chunks.length || !playing) {
+                setPlaying(false);
+                return;
+            }
+            const utterance = new SpeechSynthesisUtterance(chunks[currentChunkIdx]);
+            if (activeVoice) utterance.voice = activeVoice;
+            utterance.rate = parseFloat(rate);
+            
+            utterance.onend = () => {
+                currentChunkIdx++;
+                speakNext();
+            };
+            utterance.onerror = () => {
+                setPlaying(false);
+            };
+            window.speechSynthesis.speak(utterance);
+        };
+        
+        speakNext();
+    };
+
+    const handleGenerate = async () => {
+        if (!text.trim()) return;
+        setIsGenerating(true);
+        setError("");
+        
+        // Detener reproducción previa
+        if (playing) {
+            if (audioRef.current) audioRef.current.pause();
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            setPlaying(false);
+        }
+
+        if (engine === 'neural') {
+            try {
+                // LLamamos al backend local/producción de Vercel
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text, speed }),
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error || `Error del servidor ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                setMp3Url(url);
+                setPlaying(true);
+                
+                // Reproducir el audio
+                setTimeout(() => {
+                    if (audioRef.current) {
+                        audioRef.current.playbackRate = parseFloat(speed);
+                        audioRef.current.play().catch(e => console.error("Playback error:", e));
+                    }
+                }, 100);
+            } catch (e) {
+                console.warn("Error con TTS de Vercel. Redireccionando a síntesis local:", e);
+                setError("El servidor de Vercel no está respondiendo (o estás en entorno de desarrollo local). Usando el motor de voz de tu dispositivo. La descarga de MP3 estará disponible tras publicar en Vercel.");
+                setMp3Url("");
+                setPlaying(true);
+                speakTextNative(text, speed);
+            } finally {
+                setIsGenerating(false);
+            }
+        } else {
+            // Local speech synthesis
+            setMp3Url("");
+            setPlaying(true);
+            speakTextNative(text, speed);
+            setIsGenerating(false);
+        }
+    };
+
+    const togglePlayback = () => {
+        if (mp3Url && audioRef.current) {
+            const audio = audioRef.current;
+            if (playing) {
+                audio.pause();
+                setPlaying(false);
+            } else {
+                audio.playbackRate = parseFloat(speed);
+                audio.play().catch(e => console.error(e));
+                setPlaying(true);
+            }
+        } else if (window.speechSynthesis) {
+            if (playing) {
+                window.speechSynthesis.cancel();
+                setPlaying(false);
+            } else {
+                setPlaying(true);
+                speakTextNative(text, speed);
+            }
+        }
+    };
+
+    const stopPlayback = () => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+        setPlaying(false);
+    };
+
+    // Auxiliar para dividir texto
+    const splitTextIntoChunks = (textToSplit, maxLength = 180) => {
+        const clean = textToSplit.replace(/\s+/g, ' ').trim();
+        if (clean.length <= maxLength) return [clean];
+        const chunks = [];
+        let current = "";
+        const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+/g) || [clean];
+        for (let sentence of sentences) {
+            sentence = sentence.trim();
+            if (!sentence) continue;
+            if (current.length + sentence.length + 1 <= maxLength) {
+                current = current ? `${current} ${sentence}` : sentence;
+            } else {
+                if (current) chunks.push(current);
+                if (sentence.length > maxLength) {
+                    const words = sentence.split(' ');
+                    let sub = "";
+                    for (const word of words) {
+                        if (sub.length + word.length + 1 <= maxLength) {
+                            sub = sub ? `${sub} ${word}` : word;
+                        } else {
+                            if (sub) chunks.push(sub);
+                            sub = word;
+                        }
+                    }
+                    if (sub) current = sub;
+                } else {
+                    current = sentence;
+                }
+            }
+        }
+        if (current) chunks.push(current);
+        return chunks;
+    };
+
+    const loadSampleText = () => {
+        setText("Manual de Oficial de Justicia - Parte General. Acdo. 08/22 punto 31º - Anexo II. Régimen de Gestión Electrónica Capitulo 5, Articulos 27, 28 y 29. El presente acuerdo regula el envío de notificaciones y la firma digital obligatoria de todas las partes firmantes en los expedientes digitales de la provincia. La implementación de la plataforma Bus Federal de Justicia permitirá la comunicación y el intercambio ágil y seguro de documental, de forma electrónica, entre todos los organismos integrados a dicha plataforma, sin necesidad de establecer canales individuales, evitando así múltiples desarrollos redundantes, brindando seguridad transaccional.");
+    };
+
+    return (
+        <div className="w-full space-y-8">
+            <style>{`
+                @keyframes equalize {
+                    0% { height: 15%; }
+                    50% { height: 100%; }
+                    100% { height: 15%; }
+                }
+                .equalizer-bar {
+                    animation: equalize 0.8s ease-in-out infinite;
+                }
+            `}</style>
+
+            <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
+                <h2 className="text-2xl font-bold text-[#002B5C] mb-4 flex items-center">
+                    <Award className="w-6 h-6 mr-2" /> Preparación Teórica - Generador de Audio de Estudio
+                </h2>
+                <p className="text-gray-600 text-sm mb-6">
+                    Pega tus apuntes o normativas del manual de oficiales de justicia aquí. El sistema los convertirá a voz hablada con acento argentino para que puedas reproducirlos en vivo o descargarlos en formato MP3 para estudiar en cualquier momento.
+                </p>
+
+                <div className="space-y-6">
+                    <div>
+                        <div className="flex justify-between items-center mb-2">
+                            <label className="text-sm font-semibold text-gray-700">Texto Teórico a Procesar:</label>
+                            <button 
+                                onClick={loadSampleText}
+                                className="text-xs text-blue-600 hover:underline font-semibold"
+                            >
+                                Cargar Ejemplo del Manual
+                            </button>
+                        </div>
+                        <textarea
+                            className="w-full h-64 p-4 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C] font-sans text-gray-800 leading-relaxed text-sm"
+                            placeholder="Pega el texto aquí... (Hasta 15.000 caracteres)"
+                            value={text}
+                            onChange={(e) => setText(e.target.value.substring(0, 15000))}
+                        />
+                        <div className="flex justify-between text-xs text-gray-400 mt-1">
+                            <span>{text.length.toLocaleString('es-AR')} / 15.000 caracteres</span>
+                            <span>{wordCount.toLocaleString('es-AR')} palabras | Duración estimada: {estimatedDuration}</span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Velocidad de Lectura:</label>
+                            <select 
+                                className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C] text-sm"
+                                value={speed}
+                                onChange={(e) => setSpeed(e.target.value)}
+                            >
+                                <option value="0.8">0.8x - Lenta</option>
+                                <option value="1.0">1.0x - Normal</option>
+                                <option value="1.2">1.2x - Rápida</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Motor de Voz:</label>
+                            <select 
+                                className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C] text-sm"
+                                value={engine}
+                                onChange={(e) => setEngine(e.target.value)}
+                            >
+                                <option value="neural">Voz Neuronal Argentina (Descargar MP3)</option>
+                                <option value="system">Voz Local del Navegador (Instantánea)</option>
+                            </select>
+                        </div>
+
+                        <div className="flex flex-col justify-end">
+                            <button 
+                                onClick={handleGenerate}
+                                disabled={isGenerating || !text.trim()}
+                                className="w-full bg-[#002B5C] hover:bg-blue-900 text-white font-bold py-3.5 px-6 rounded-lg text-sm flex justify-center items-center transition-colors shadow disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        </svg>
+                                        Procesando Audio...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Play className="w-4 h-4 mr-2" /> Generar Audio para Estudio
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-xs leading-relaxed">
+                            <strong>Nota de desarrollo:</strong> {error}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Custom Audio Player Card */}
+            {(mp3Url || playing) && (
+                <div className="bg-gradient-to-r from-[#001f40] to-[#002B5C] p-8 rounded-2xl shadow-lg border border-[#002B5C] text-white flex flex-col md:flex-row items-center justify-between space-y-6 md:space-y-0">
+                    <div className="flex items-center space-x-6">
+                        <div className="p-4 bg-white/10 rounded-full backdrop-blur-sm border border-white/10">
+                            {playing ? (
+                                <div className="flex items-end justify-center space-x-1 w-8 h-8">
+                                    {[...Array(5)].map((_, i) => (
+                                        <div 
+                                            key={i} 
+                                            className="w-1 bg-yellow-400 rounded-full equalizer-bar" 
+                                            style={{ 
+                                                animationDelay: `${i * 0.1}s`,
+                                                animationDuration: `${0.5 + (i % 2) * 0.2}s`,
+                                                height: '30%'
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <Award className="w-8 h-8 text-yellow-400" />
+                            )}
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg">Reproductor de Audio de Estudio</h3>
+                            <p className="text-xs text-gray-300 mt-1">
+                                {mp3Url ? "Voz Neuronal Argentina - Archivo MP3 de Alta Calidad" : `Voz Local del Navegador: ${activeVoice ? activeVoice.name : 'Español'}`}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center space-x-4">
+                        <button 
+                            onClick={togglePlayback}
+                            className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold px-6 py-2.5 rounded-full text-sm flex items-center transition-colors shadow"
+                        >
+                            {playing ? "PAUSAR" : "REPRODUCIR"}
+                        </button>
+                        <button 
+                            onClick={stopPlayback}
+                            className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold px-5 py-2.5 rounded-full text-sm transition-colors"
+                        >
+                            DETENER
+                        </button>
+                        {mp3Url && (
+                            <a 
+                                href={mp3Url} 
+                                download="preparacion-teorica.mp3"
+                                className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2.5 rounded-full text-sm flex items-center transition-colors shadow border border-green-500"
+                            >
+                                DESCARGAR MP3
+                            </a>
+                        )}
+                    </div>
+
+                    {mp3Url && (
+                        <audio 
+                            ref={audioRef} 
+                            src={mp3Url} 
+                            onEnded={() => setPlaying(false)} 
+                            style={{ display: 'none' }}
+                        />
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ==========================================
 // 6. COMPONENTE PRINCIPAL (APP)
 // ==========================================
@@ -1312,11 +1698,9 @@ export default function App() {
             <Header activeTab={activeTab} setActiveTab={setActiveTab} />
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <UserBar />
-                {activeTab === 'simulador' ? (
-                    <Simulador />
-                ) : (
-                    <Entrenamiento history={history} onAddHistory={handleAddHistory} />
-                )}
+                {activeTab === 'simulador' && <Simulador />}
+                {activeTab === 'entrenamiento' && <Entrenamiento history={history} onAddHistory={handleAddHistory} />}
+                {activeTab === 'teoria' && <PreparacionTeorica />}
             </main>
         </div>
     );
