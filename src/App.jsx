@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
     Play, RotateCcw, CheckCircle, Clock, User, BookOpen, Settings,
-    Star, Volume2, VolumeX, Award, ArrowLeft
+    Star, Volume2, VolumeX, Award, ArrowLeft, History, Eye, Trash
 } from 'lucide-react';
 
 // ==========================================
@@ -222,6 +222,11 @@ const Simulador = () => {
     const [results, setResults] = useState(null);
     const textareaRef = useRef(null);
 
+    const [simHistory, setSimHistory] = useState(() => {
+        const saved = localStorage.getItem('dactilografia_simulador_historial');
+        return saved ? JSON.parse(saved) : [];
+    });
+
     const selectedTextObject = LEGAL_TEXTS.find(t => t.id === selectedTextId);
 
     useEffect(() => {
@@ -247,8 +252,38 @@ const Simulador = () => {
         const wpm = (evalResult.accountedWords / safeTime).toFixed(1);
         const errorsPerMinute = ((evalResult.majorErrors + evalResult.minorErrors) / safeTime).toFixed(1);
 
-        setResults({ ...evalResult, wpm, errorsPerMinute, timeSpentMinutes, passed: evalResult.accountedWords >= requiredWords });
+        const newResult = {
+            id: Date.now(),
+            timestamp: new Date().toLocaleString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }),
+            textId: selectedTextId,
+            textTitle: selectedTextObject.title,
+            timeLimitMinutes,
+            requiredWords,
+            wpm,
+            errorsPerMinute,
+            timeSpentMinutes,
+            passed: evalResult.accountedWords >= requiredWords,
+            ...evalResult
+        };
+
+        const updatedHistory = [newResult, ...simHistory];
+        setSimHistory(updatedHistory);
+        localStorage.setItem('dactilografia_simulador_historial', JSON.stringify(updatedHistory));
+        setResults(newResult);
         setPhase('results');
+    };
+
+    const deleteSimAttempt = (id, e) => {
+        e.stopPropagation();
+        const updated = simHistory.filter(x => x.id !== id);
+        setSimHistory(updated);
+        localStorage.setItem('dactilografia_simulador_historial', JSON.stringify(updated));
     };
 
     const formatTime = (seconds) => {
@@ -260,30 +295,122 @@ const Simulador = () => {
     return (
         <div className="w-full">
             {phase === 'config' && (
-                <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-                    <h2 className="text-2xl font-bold text-[#002B5C] mb-6 flex items-center">
-                        <Settings className="w-6 h-6 mr-2" /> Configuración Examen Oficial
-                    </h2>
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Texto a copiar:</label>
-                            <select className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C]" value={selectedTextId} onChange={(e) => setSelectedTextId(Number(e.target.value))}>
-                                {LEGAL_TEXTS.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-                            </select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-8">
+                    <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
+                        <h2 className="text-2xl font-bold text-[#002B5C] mb-6 flex items-center">
+                            <Settings className="w-6 h-6 mr-2" /> Configuración Examen Oficial
+                        </h2>
+                        <div className="space-y-6">
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Minutos:</label>
-                                <input type="number" min="1" max="15" className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C]" value={timeLimitMinutes} onChange={(e) => setTimeLimitMinutes(Number(e.target.value))} />
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Texto a copiar:</label>
+                                <select className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C]" value={selectedTextId} onChange={(e) => setSelectedTextId(Number(e.target.value))}>
+                                    {LEGAL_TEXTS.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                                </select>
                             </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Palabras mínimas:</label>
-                                <input type="number" min="10" max="1000" className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C]" value={requiredWords} onChange={(e) => setRequiredWords(Number(e.target.value))} />
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Minutos:</label>
+                                    <input type="number" min="1" max="15" className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C]" value={timeLimitMinutes} onChange={(e) => setTimeLimitMinutes(Number(e.target.value))} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Palabras mínimas:</label>
+                                    <input type="number" min="10" max="1000" className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C]" value={requiredWords} onChange={(e) => setRequiredWords(Number(e.target.value))} />
+                                </div>
                             </div>
+                            <button onClick={handleStart} className="w-full bg-[#002B5C] hover:bg-blue-900 text-white font-bold py-4 px-6 rounded-lg text-lg flex justify-center items-center transition-colors shadow">
+                                <Play className="w-5 h-5 mr-2" /> Iniciar Simulador
+                            </button>
                         </div>
-                        <button onClick={handleStart} className="w-full bg-[#002B5C] hover:bg-blue-900 text-white font-bold py-4 px-6 rounded-lg text-lg flex justify-center items-center transition-colors shadow">
-                            <Play className="w-5 h-5 mr-2" /> Iniciar Simulador
-                        </button>
+                    </div>
+
+                    {/* Historial de Intentos */}
+                    <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-[#002B5C] flex items-center">
+                                <History className="w-5 h-5 mr-2" /> Historial de Prácticas del Simulador
+                            </h3>
+                            {simHistory.length > 0 && (
+                                <button 
+                                    onClick={() => {
+                                        if (window.confirm("¿Seguro que deseas borrar todo el historial del simulador?")) {
+                                            setSimHistory([]);
+                                            localStorage.removeItem('dactilografia_simulador_historial');
+                                        }
+                                    }}
+                                    className="text-xs text-red-500 hover:text-red-700 font-semibold border border-red-200 rounded px-2.5 py-1 hover:bg-red-50 transition-colors"
+                                >
+                                    Borrar Todo
+                                </button>
+                            )}
+                        </div>
+
+                        {simHistory.length === 0 ? (
+                            <p className="text-center text-gray-400 py-6 text-sm">Aún no tienes prácticas registradas en esta sección.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead>
+                                        <tr className="text-gray-400 font-bold text-left text-xs uppercase tracking-wider">
+                                            <th className="pb-3">Fecha</th>
+                                            <th className="pb-3">Texto Seleccionado</th>
+                                            <th className="pb-3 text-center">Velocidad</th>
+                                            <th className="pb-3 text-center">Palabras (Escritas / Req.)</th>
+                                            <th className="pb-3 text-center">Errores (G/L)</th>
+                                            <th className="pb-3 text-center">Resultado</th>
+                                            <th className="pb-3 text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {simHistory.map((attempt) => (
+                                            <tr key={attempt.id} className="text-gray-700 hover:bg-gray-50/50">
+                                                <td className="py-3 font-medium text-gray-500 whitespace-nowrap">{attempt.timestamp}</td>
+                                                <td className="py-3 font-semibold text-gray-800 max-w-[200px] truncate" title={attempt.textTitle}>
+                                                    {attempt.textTitle}
+                                                </td>
+                                                <td className="py-3 text-center font-bold text-[#002B5C] whitespace-nowrap">
+                                                    {attempt.wpm} PPM
+                                                </td>
+                                                <td className="py-3 text-center font-medium whitespace-nowrap">
+                                                    {attempt.accountedWords} / {attempt.requiredWords}
+                                                </td>
+                                                <td className="py-3 text-center font-mono text-xs whitespace-nowrap">
+                                                    <span className="text-red-600 font-semibold" title="Errores Graves">{attempt.majorErrors}G</span>
+                                                    <span className="text-gray-400 mx-1">/</span>
+                                                    <span className="text-amber-600 font-semibold" title="Errores Leves">{attempt.minorErrors}L</span>
+                                                </td>
+                                                <td className="py-3 text-center whitespace-nowrap">
+                                                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${attempt.passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        {attempt.passed ? 'APROBADO' : 'NO ALCANZADO'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 text-center whitespace-nowrap">
+                                                    <div className="flex justify-center space-x-2">
+                                                        <button 
+                                                            onClick={() => {
+                                                                setResults(attempt);
+                                                                setRequiredWords(attempt.requiredWords);
+                                                                setPhase('results');
+                                                            }}
+                                                            className="p-1 text-blue-500 hover:text-blue-700 rounded hover:bg-blue-50 transition"
+                                                            title="Ver Detalle"
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={(e) => deleteSimAttempt(attempt.id, e)}
+                                                            className="p-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50 transition"
+                                                            title="Eliminar"
+                                                        >
+                                                            <Trash className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -315,19 +442,19 @@ const Simulador = () => {
             )}
 
             {phase === 'results' && results && (
-                <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 max-w-2xl mx-auto">
-                    <div className="text-center mb-6">
+                <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 max-w-2xl mx-auto space-y-6">
+                    <div className="text-center">
                         <h2 className={`text-4xl font-black tracking-wide ${results.passed ? 'text-green-600' : 'text-red-600'}`}>
                             {results.passed ? 'APROBADO' : 'NO ALCANZADO'}
                         </h2>
                         <p className="text-gray-500 mt-1">Resultado de la evaluación judicial de dactilografía</p>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-8">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                         <div className="bg-slate-50 p-4 rounded-lg border">
                             <span className="text-xs text-gray-500 uppercase block font-semibold">Palabras Computadas</span>
                             <span className="text-2xl font-bold text-slate-800">{results.accountedWords}</span>
-                            <span className="text-[10px] text-gray-400 block">Min. req: {requiredWords}</span>
+                            <span className="text-[10px] text-gray-400 block">Min. req: {results.requiredWords || requiredWords}</span>
                         </div>
                         <div className="bg-slate-50 p-4 rounded-lg border">
                             <span className="text-xs text-gray-500 uppercase block font-semibold">Velocidad</span>
@@ -343,7 +470,7 @@ const Simulador = () => {
                         </div>
                     </div>
 
-                    <div className="bg-slate-50 p-4 rounded-lg border text-sm text-slate-700 space-y-2 mb-8">
+                    <div className="bg-slate-50 p-4 rounded-lg border text-sm text-slate-700 space-y-2">
                         <div className="flex justify-between border-b pb-2">
                             <span>Palabras en el texto original:</span>
                             <span className="font-bold">{results.totalWords}</span>
@@ -359,6 +486,43 @@ const Simulador = () => {
                         <div className="flex justify-between pb-1">
                             <span>Palabras omitidas / extras:</span>
                             <span className="font-bold text-red-500">{results.omitted}</span>
+                        </div>
+                    </div>
+
+                    {/* Comparación de Palabras Tipeadas */}
+                    <div className="bg-slate-50 p-6 rounded-xl border border-gray-200 max-h-60 overflow-y-auto">
+                        <h4 className="text-gray-600 font-bold tracking-wider text-xs mb-4 uppercase text-center">
+                            Revisión del Texto Evaluado (Palabra por Palabra)
+                        </h4>
+                        <div className="flex flex-wrap gap-2 text-justify font-serif text-lg leading-relaxed select-none">
+                            {results.evaluatedOrig && results.evaluatedOrig.map((wordObj, wIdx) => {
+                                let wordClass = "";
+                                let titleText = "";
+                                if (wordObj.status === 'correct') {
+                                    wordClass = "text-green-600";
+                                    titleText = "Correcta";
+                                } else if (wordObj.status === 'minor') {
+                                    wordClass = "text-amber-600 bg-amber-50 border-b-2 border-amber-400 font-semibold px-0.5 rounded";
+                                    titleText = "Error Leve (Acento o Mayúscula)";
+                                } else if (wordObj.status === 'major') {
+                                    wordClass = "text-red-600 bg-red-50 border-b-2 border-red-500 font-bold px-0.5 rounded";
+                                    titleText = "Error Grave (Falta de ortografía o palabra incorrecta)";
+                                } else if (wordObj.status === 'omitted') {
+                                    wordClass = "text-gray-400 line-through opacity-60";
+                                    titleText = "Palabra Omitida";
+                                }
+                                return (
+                                    <span key={wIdx} className={`${wordClass} cursor-help`} title={titleText}>
+                                        {wordObj.text}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                        <div className="mt-4 pt-3 border-t border-gray-200 flex justify-center space-x-6 text-[11px] font-medium text-gray-500">
+                            <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-green-500 mr-1.5"></span> Correcta</span>
+                            <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-amber-500 mr-1.5"></span> Error Leve</span>
+                            <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-red-500 mr-1.5"></span> Error Grave</span>
+                            <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-gray-400 mr-1.5"></span> Omitida</span>
                         </div>
                     </div>
 
