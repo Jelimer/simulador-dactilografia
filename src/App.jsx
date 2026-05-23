@@ -1289,6 +1289,110 @@ const Entrenamiento = ({ history, onAddHistory }) => {
 };
 
 
+const loadPdfJs = () => {
+    return new Promise((resolve, reject) => {
+        if (window.pdfjsLib) {
+            resolve(window.pdfjsLib);
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+        script.onload = () => {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+            resolve(window.pdfjsLib);
+        };
+        script.onerror = (e) => reject(new Error("No se pudo cargar la librería PDF.js"));
+        document.head.appendChild(script);
+    });
+};
+
+const cleanExtractedText = (text, pageNum, enableStrictFilters) => {
+    if (!enableStrictFilters) return text;
+    
+    let lines = text.split('\n');
+    lines = lines.filter(line => {
+        const cleanLine = line.trim().toLowerCase();
+        
+        // 1. Omitir líneas vacías
+        if (!cleanLine) return false;
+        
+        // 2. Eliminar encabezados específicos del manual oficial de Corrientes
+        if (cleanLine.includes('manual de estudio') || 
+            cleanLine.includes('aspirantes al cargo') || 
+            cleanLine.includes('oficial de justicia') || 
+            cleanLine.includes('módulo 3') || 
+            cleanLine.includes('poder judicial')) {
+            if (cleanLine.length < 120 && (cleanLine.includes('manual de estudio') || cleanLine.includes('provincia de corrientes') || cleanLine.includes('poder judicial'))) {
+                return false;
+            }
+        }
+        
+        // 3. Eliminar subencabezados geográficos y fijos
+        if (cleanLine === 'provincia de corrientes') return false;
+        
+        // 4. Eliminar números de página con formato (ej: "P.  7 0", "p. 70", "P. 7 1", "P. 10")
+        if (/^p\.\s*[\d\s]+$/i.test(cleanLine) || /^p\s*[\d\s]+$/i.test(cleanLine)) return false;
+        
+        // 5. Eliminar la palabra "NOTAS" aislada (usualmente cabecera de bloques de notas)
+        if (cleanLine === 'notas') return false;
+        
+        // 6. Eliminar texto de espacio para notas o cuadros vacíos
+        if (cleanLine.includes('espacio para notas') || 
+            cleanLine.includes('escriba sus notas') || 
+            cleanLine.includes('notas de estudio')) return false;
+            
+        // 7. Eliminar marcas de agua repetitivas o líneas que solo tienen guiones/puntos separadores
+        if (/^[_\-\.\s★*]+$/i.test(cleanLine)) return false;
+
+        return true;
+    });
+    
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+};
+
+const extractTextFromPdf = async (file, fromPage, toPage, enableFilters) => {
+    const pdfjsLib = await loadPdfJs();
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    let fullText = "";
+    const totalPages = pdf.numPages;
+    const start = Math.max(1, fromPage);
+    const end = Math.min(totalPages, toPage);
+
+    for (let pageNum = start; pageNum <= end; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        let lastY = null;
+        let textLines = [];
+        let currentLine = "";
+        
+        for (const item of textContent.items) {
+            const y = item.transform[5]; 
+            if (lastY === null || Math.abs(y - lastY) < 5) {
+                currentLine += (currentLine ? " " : "") + item.str;
+            } else {
+                if (currentLine.trim()) {
+                    textLines.push(currentLine);
+                }
+                currentLine = item.str;
+            }
+            lastY = y;
+        }
+        if (currentLine.trim()) {
+            textLines.push(currentLine);
+        }
+        
+        const pageCleanedText = cleanExtractedText(textLines.join('\n'), pageNum, enableFilters);
+        if (pageCleanedText) {
+            fullText += (fullText ? "\n\n" : "") + pageCleanedText;
+        }
+    }
+    
+    return { text: fullText, totalPages };
+};
+
 const PreparacionTeorica = () => {
     const [text, setText] = useState('');
     const [speed, setSpeed] = useState('1.0');
@@ -1299,6 +1403,14 @@ const PreparacionTeorica = () => {
     const [error, setError] = useState('');
     const [availableVoices, setAvailableVoices] = useState([]);
     
+    // PDF related states
+    const [pdfFile, setPdfFile] = useState(null);
+    const [pdfTotalPages, setPdfTotalPages] = useState(0);
+    const [pdfFromPage, setPdfFromPage] = useState(1);
+    const [pdfToPage, setPdfToPage] = useState(1);
+    const [isExtracting, setIsExtracting] = useState(false);
+    const [enableStrictFilters, setEnableStrictFilters] = useState(true);
+
     const audioRef = useRef(null);
 
     // Cargar voces del sistema
@@ -1331,7 +1443,6 @@ const PreparacionTeorica = () => {
     }, [text]);
 
     const estimatedDuration = useMemo(() => {
-        // Duración aproximada a 130 palabras por minuto
         const totalSeconds = Math.round((wordCount / 130) * 60);
         const m = Math.floor(totalSeconds / 60);
         const s = totalSeconds % 60;
@@ -1342,8 +1453,6 @@ const PreparacionTeorica = () => {
         if (!window.speechSynthesis) return;
         window.speechSynthesis.cancel();
         
-        // Google TTS en navegador suele fallar con textos excesivamente largos de una sola vez
-        // por lo que dividimos en oraciones de hasta 200 caracteres para el habla local también
         const chunks = splitTextIntoChunks(textToSpeak, 180);
         let currentChunkIdx = 0;
 
@@ -1369,12 +1478,52 @@ const PreparacionTeorica = () => {
         speakNext();
     };
 
+    const handlePdfFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setPdfFile(file);
+        setIsExtracting(true);
+        setError("");
+        
+        try {
+            const pdfjsLib = await loadPdfJs();
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            setPdfTotalPages(pdf.numPages);
+            setPdfFromPage(1);
+            setPdfToPage(Math.min(pdf.numPages, 3)); // Por defecto procesa las primeras 3 páginas
+        } catch (err) {
+            console.error(err);
+            setError("No se pudo cargar el archivo PDF. Asegúrate de que sea un archivo válido.");
+            setPdfFile(null);
+            setPdfTotalPages(0);
+        } finally {
+            setIsExtracting(false);
+        }
+    };
+
+    const handleExtractPdfText = async () => {
+        if (!pdfFile) return;
+        setIsExtracting(true);
+        setError("");
+        
+        try {
+            const { text: extractedText } = await extractTextFromPdf(pdfFile, pdfFromPage, pdfToPage, enableStrictFilters);
+            setText(extractedText.substring(0, 15000));
+            setError(`Texto extraído exitosamente de las páginas ${pdfFromPage} a la ${pdfToPage}. Se importaron ${extractedText.length.toLocaleString('es-AR')} caracteres.`);
+        } catch (err) {
+            console.error(err);
+            setError("Ocurrió un error al extraer el texto del PDF. Intenta de nuevo.");
+        } finally {
+            setIsExtracting(false);
+        }
+    };
+
     const handleGenerate = async () => {
         if (!text.trim()) return;
         setIsGenerating(true);
         setError("");
         
-        // Detener reproducción previa
         if (playing) {
             if (audioRef.current) audioRef.current.pause();
             if (window.speechSynthesis) window.speechSynthesis.cancel();
@@ -1383,7 +1532,6 @@ const PreparacionTeorica = () => {
 
         if (engine === 'neural') {
             try {
-                // LLamamos al backend local/producción de Vercel
                 const response = await fetch('/api/tts', {
                     method: 'POST',
                     headers: {
@@ -1402,7 +1550,6 @@ const PreparacionTeorica = () => {
                 setMp3Url(url);
                 setPlaying(true);
                 
-                // Reproducir el audio
                 setTimeout(() => {
                     if (audioRef.current) {
                         audioRef.current.playbackRate = parseFloat(speed);
@@ -1419,7 +1566,6 @@ const PreparacionTeorica = () => {
                 setIsGenerating(false);
             }
         } else {
-            // Local speech synthesis
             setMp3Url("");
             setPlaying(true);
             speakTextNative(text, speed);
@@ -1460,7 +1606,6 @@ const PreparacionTeorica = () => {
         setPlaying(false);
     };
 
-    // Auxiliar para dividir texto
     const splitTextIntoChunks = (textToSplit, maxLength = 180) => {
         const clean = textToSplit.replace(/\s+/g, ' ').trim();
         if (clean.length <= maxLength) return [clean];
@@ -1517,10 +1662,75 @@ const PreparacionTeorica = () => {
                     <Award className="w-6 h-6 mr-2" /> Preparación Teórica - Generador de Audio de Estudio
                 </h2>
                 <p className="text-gray-600 text-sm mb-6">
-                    Pega tus apuntes o normativas del manual de oficiales de justicia aquí. El sistema los convertirá a voz hablada con acento argentino para que puedas reproducirlos en vivo o descargarlos en formato MP3 para estudiar en cualquier momento.
+                    Pega tus apuntes o sube un PDF del manual oficial de la provincia de Corrientes. El sistema extraerá el texto, aplicará filtros de limpieza estricta y lo convertirá a voz con acento argentino.
                 </p>
 
                 <div className="space-y-6">
+                    {/* Panel de Carga de PDF */}
+                    <div className="p-4 bg-slate-50 border border-gray-200 rounded-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-inner">
+                        <div className="flex-1">
+                            <span className="block text-sm font-semibold text-gray-800">📁 Extraer texto desde un PDF oficial:</span>
+                            <span className="block text-xs text-gray-500 mt-0.5">Sube tu manual de estudio para extraer páginas seleccionadas automáticamente.</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <label className="bg-white border border-gray-300 hover:border-gray-400 text-gray-700 font-semibold px-4 py-2.5 rounded cursor-pointer transition text-xs shadow-sm flex items-center">
+                                <span>{pdfFile ? pdfFile.name : "Seleccionar PDF"}</span>
+                                <input 
+                                    type="file" 
+                                    accept=".pdf" 
+                                    className="hidden" 
+                                    onChange={handlePdfFileChange}
+                                />
+                            </label>
+                            {pdfFile && (
+                                <>
+                                    <div className="flex items-center space-x-1.5 text-xs text-gray-600">
+                                        <span>Desde Pág:</span>
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            max={pdfTotalPages || 999}
+                                            className="w-14 p-1.5 border rounded text-center" 
+                                            value={pdfFromPage} 
+                                            onChange={(e) => setPdfFromPage(Math.max(1, Number(e.target.value)))}
+                                        />
+                                        <span>hasta:</span>
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            max={pdfTotalPages || 999}
+                                            className="w-14 p-1.5 border rounded text-center" 
+                                            value={pdfToPage} 
+                                            onChange={(e) => setPdfToPage(Math.max(1, Number(e.target.value)))}
+                                        />
+                                        {pdfTotalPages && <span className="text-[10px] text-gray-400">(de {pdfTotalPages})</span>}
+                                    </div>
+                                    <button 
+                                        onClick={handleExtractPdfText}
+                                        disabled={isExtracting}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded text-xs transition shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
+                                    >
+                                        {isExtracting ? "Extrayendo..." : "Extraer Texto"}
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Checkbox Filtros Exclusión Estricta */}
+                    <div className="flex items-start space-x-3 bg-blue-50/50 p-4 border border-blue-100 rounded-lg">
+                        <input 
+                            type="checkbox" 
+                            id="strictFilters"
+                            className="mt-0.5 w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                            checked={enableStrictFilters}
+                            onChange={(e) => setEnableStrictFilters(e.target.checked)}
+                        />
+                        <label htmlFor="strictFilters" className="text-xs text-gray-700 font-medium cursor-pointer select-none leading-relaxed">
+                            <strong>Filtros de limpieza del texto (exclusión estricta)</strong>: Al extraer del PDF, elimina automáticamente los encabezados repetitivos del manual de oficiales, números de página (ej. <i>\"P. 70\"</i>), pies de página, títulos aislados de <i>\"NOTAS\"</i>, cuadros en blanco y marcas de agua. Esto evita que la voz lea metadatos repetitivos en cada cambio de página.
+                        </label>
+                    </div>
+
                     <div>
                         <div className="flex justify-between items-center mb-2">
                             <label className="text-sm font-semibold text-gray-700">Texto Teórico a Procesar:</label>
@@ -1533,7 +1743,7 @@ const PreparacionTeorica = () => {
                         </div>
                         <textarea
                             className="w-full h-64 p-4 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C] font-sans text-gray-800 leading-relaxed text-sm"
-                            placeholder="Pega el texto aquí... (Hasta 15.000 caracteres)"
+                            placeholder="El texto extraído aparecerá aquí. También puedes pegar tu propio texto directamente..."
                             value={text}
                             onChange={(e) => setText(e.target.value.substring(0, 15000))}
                         />
@@ -1572,7 +1782,7 @@ const PreparacionTeorica = () => {
                         <div className="flex flex-col justify-end">
                             <button 
                                 onClick={handleGenerate}
-                                disabled={isGenerating || !text.trim()}
+                                disabled={isGenerating || isExtracting || !text.trim()}
                                 className="w-full bg-[#002B5C] hover:bg-blue-900 text-white font-bold py-3.5 px-6 rounded-lg text-sm flex justify-center items-center transition-colors shadow disabled:bg-gray-300 disabled:cursor-not-allowed"
                             >
                                 {isGenerating ? (
@@ -1593,8 +1803,8 @@ const PreparacionTeorica = () => {
                     </div>
 
                     {error && (
-                        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-xs leading-relaxed">
-                            <strong>Nota de desarrollo:</strong> {error}
+                        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-xs leading-relaxed shadow-sm">
+                            {error}
                         </div>
                     )}
                 </div>
