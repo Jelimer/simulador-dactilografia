@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
     Play, RotateCcw, CheckCircle, Clock, User, BookOpen, Settings,
-    Star, Volume2, VolumeX, Award, ArrowLeft, History, Eye, Trash
+    Star, Volume2, VolumeX, Award, ArrowLeft, History, Eye, Trash,
+    Search, Coffee, Keyboard, HelpCircle
 } from 'lucide-react';
 
 // ==========================================
@@ -128,14 +129,113 @@ const evaluateTyping = (originalText, typedText) => {
 // 2. DATOS DE ENTRENAMIENTO (TypingClub style)
 // ==========================================
 const TRAINING_LESSONS = [
-    { id: 1, title: 'Básico: F y J', text: 'f j f j ff jj fj jf fff jjj f j f j ff jj fj jf fff jjj f j' },
-    { id: 2, title: 'Agregando: D y K', text: 'd k d k dd kk dk kd ddd kkk f d j k fd jk dk fd kj jk fd dk' },
-    { id: 3, title: 'Agregando: S y L', text: 's l s l ss ll sl ls sss lll d s k l ds kl sl ls ds lk sk dl' },
-    { id: 4, title: 'Agregando: A y Ñ', text: 'a ñ a ñ aa ññ añ ña aaa ñññ s a l ñ sa lñ as ña as ñs la ña' },
-    { id: 5, title: 'Fila Guía Completa', text: 'a s d f j k l ñ asdf jklñ as df jk lñ f d s a j k l ñ asdf' },
-    { id: 6, title: 'Centro: G y H', text: 'f g f g j h j h fg jh g f h j g h g h fgh jhk g h g h' },
-    { id: 7, title: 'Combinando G y H', text: 'a s d f g ñ l k j h asdfg ñlkjh g f d s a h j k l ñ gh gh' },
-    { id: 8, title: 'Palabras fila guía', text: 'la sal las alas salsa falsa faja gafa hala jala asada' },
+    // Fila guía
+    { id: 1, title: 'Introducción', text: 'f j f j ff jj f j f j ff jj', section: 'Fila guía' },
+    { id: 2, title: 'Teclas f & j', text: 'f j f j ff jj fj jf fff jjj f j f j ff jj fj jf fff jjj f j', section: 'Fila guía' },
+    { id: 3, title: 'Barra de espacio', text: 'f j f j ff jj fj jf fff jjj f j f j ff jj fj jf fff jjj f j', section: 'Fila guía' },
+    { id: 4, title: 'Revisión: f & j', text: 'f j j f ff jj fj jf jf fj ff jj fj jf f j j f ff jj fj jf', section: 'Fila guía' },
+    { id: 5, title: 'Teclas d & k', text: 'd k d k dd kk dk kd ddd kkk f d j k fd jk dk fd kj jk fd dk', section: 'Fila guía' },
+    { id: 6, title: 'Revisión: d & k', text: 'f d j k fd jk dk fd kj jk fd dk d k d k dd kk dk kd ddd kkk', section: 'Fila guía' },
+    { id: 7, title: 'Práctica: d & k', text: 'dd kk dd kk dk kd fd jk fd jk dd kk dk kd fd jk fd jk dd kk', section: 'Fila guía' },
+    // 8: Juego fjdk - omitido
+    { id: 9, title: 'Teclas s & l', text: 's l s l ss ll sl ls sss lll d s k l ds kl sl ls ds lk sk dl', section: 'Fila guía' },
+    { id: 10, title: 'Revisión: s & l', text: 'ds kl sl ls ds lk sk dl ss ll sl ls ds kl sl ls ds lk sk dl', section: 'Fila guía' },
+    { id: 11, title: 'Práctica: s & l', text: 'sl ls sl ls ds kl ds kl ss ll sl ls sl ls sl ls ds kl ds kl', section: 'Fila guía' },
+    { id: 12, title: 'Teclas a & ñ', text: 'a ñ a ñ aa ññ añ ña aaa ñññ s a l ñ sa lñ as ña as ñs la ña', section: 'Fila guía' },
+    { id: 13, title: 'Revisión: a & ñ', text: 'sa lñ as ña as ñs la ña aa ññ añ ña sa lñ as ña as ñs la ña', section: 'Fila guía' },
+    { id: 14, title: 'Primeras 8 teclas', text: 'a s d f j k l ñ asdf jklñ as df jk lñ f d s a j k l ñ asdf', section: 'Fila guía' },
+    // 15: Juego Las primeras 8 - omitido
+    { id: 16, title: 'Fila guía: Izquierda', text: 'a s d f g asdfg asdfg asdf asdf a s d f a s d f g asdfg asdfg', section: 'Fila guía' },
+    { id: 17, title: 'Fila guía: Derecha', text: 'j k l ñ h jklñh jklñh jklñ jklñ j k l ñ j k l ñ h jklñh jklñh', section: 'Fila guía' },
+    { id: 18, title: 'Teclas g & h', text: 'f g f g j h j h fg jh g f h j g h g h fgh jhk g h g h fg jh', section: 'Fila guía' },
+    { id: 19, title: 'Revisión: g & h', text: 'f g f g j h j h fg jh g f h j g h g h fgh jhk g h g h fg jh', section: 'Fila guía' },
+    { id: 20, title: 'Práctica: g & h', text: 'a s d f g ñ l k j h asdfg ñlkjh g f d s a h j k l ñ gh gh', section: 'Fila guía' },
+    { id: 21, title: 'Revisión: Fila guía', text: 'a s d f g h j k l ñ asdfg hjklñ asdfg hjklñ a s d f g h j k l ñ', section: 'Fila guía' },
+    // 22: Juego Fila guía - omitido
+
+    // Fila superior
+    { id: 23, title: 'Teclas r & u', text: 'r u r u rr uu ru ur rrr uuu fr ju ru ur fr ju ru ur fr ju', section: 'Fila superior' },
+    { id: 24, title: 'Revisión: r & u', text: 'fr ju ru ur fr uj ur ju rr uu ru ur fr ju ru ur fr uj ur ju', section: 'Fila superior' },
+    { id: 25, title: 'Práctica: r & u', text: 'fur jur dru kur rud urd rudy jury fur jur dru kur rud urd', section: 'Fila superior' },
+    { id: 26, title: 'Teclas e & i', text: 'e i e i ee ii ei ie eee iii de ki ei ie de ki ei ie de ki', section: 'Fila superior' },
+    { id: 27, title: 'Revisión: e & i', text: 'de ki ei ie de ik ie ki ee ii ei ie de ki ei ie de ik ie ki', section: 'Fila superior' },
+    { id: 28, title: 'Práctica: e & i', text: 'diente kiko elfo idea irene elias kilo diente kiko elfo idea', section: 'Fila superior' },
+    { id: 29, title: '¡Postura saludable!', text: 'mantener la espalda recta y los pies apoyados en el suelo', section: 'Fila superior' },
+    { id: 30, title: 'Revisión Base + ruei', text: 'f j d k s l a ñ r u e i ruei ruei fjdk f j d k s l a ñ r u e i', section: 'Fila superior' },
+    { id: 31, title: 'Fila superior: Izquierda', text: 'q w e r t qwert qwert qwert qwert q w e r t q w e r t qwert', section: 'Fila superior' },
+    { id: 32, title: 'Fila superior: Derecha', text: 'y u i o p yuiop yuiop yuiop yuiop y u i o p y u i o p yuiop', section: 'Fila superior' },
+    // 33: Juego ruei - omitido
+    { id: 34, title: 'Teclas w & o', text: 'w o w o ww oo wo ow www ooo sw lo wo ow sw lo wo ow sw lo', section: 'Fila superior' },
+    { id: 35, title: 'Revisión: w & o', text: 'sw lo wo ow sw ol ow lo ww oo wo ow sw lo wo ow sw ol ow', section: 'Fila superior' },
+    { id: 36, title: 'Práctica: w & o', text: 'show wolf wool solo slow look wood door show wolf wool solo', section: 'Fila superior' },
+    // 37: Juego Teclas superior - omitido
+    { id: 38, title: 'Teclas q & y', text: 'q y q y qq yy qy yq qqq yyy aq jy qy yq aq jy qy yq aq jy', section: 'Fila superior' },
+    { id: 39, title: 'Revisión: q & y', text: 'aq jy qy yq aq yj yq jy qq yy qy yq aq jy qy yq aq yj yq', section: 'Fila superior' },
+    { id: 40, title: 'Práctica: q & y', text: 'aquí ayer queso yema quito yate raya aquí ayer queso yema', section: 'Fila superior' },
+    { id: 41, title: 'Teclas t & p', text: 't p t p tt pp tp pt ttt ppp ft jp tp pt ft jp tp pt ft jp', section: 'Fila superior' },
+    { id: 42, title: 'Revisión: t & p', text: 'ft jp tp pt ft pj pt jp tt pp tp pt ft jp tp pt ft pj pt jp', section: 'Fila superior' },
+    { id: 43, title: 'Práctica: t & p', text: 'tapa pato apto tipo paso tela piso tres tapa pato apto tipo', section: 'Fila superior' },
+    // 44: Juego Fila superior - omitido
+    { id: 45, title: '¡Piensa ideas, no en letras!', text: 'escribir sin mirar el teclado permite pensar en las ideas', section: 'Fila superior' },
+    { id: 46, title: 'Revisión Base + Fila superior', text: 'qwert yuiop asdfg hjklñ qwert yuiop asdfg hjklñ qwert yuiop', section: 'Fila superior' },
+    { id: 47, title: 'Fila superior: Izquierda', text: 'q w e r t qwert qwert qwert qwert q w e r t q w e r t qwert', section: 'Fila superior' },
+    { id: 48, title: 'Fila superior: Derecha', text: 'y u i o p yuiop yuiop yuiop yuiop y u i o p y u i o p yuiop', section: 'Fila superior' },
+    // 49-50: Juegos Fila superior - omitidos
+
+    // Fila inferior
+    { id: 51, title: 'Teclas v & m', text: 'v m v m vv mm vm mv vvv mmm fv jm vm mv fv jm vm mv fv jm', section: 'Fila inferior' },
+    { id: 52, title: 'Revisión: v & m', text: 'fv jm vm mv fv mj mv jm vv mm vm mv fv jm vm mv fv mj mv', section: 'Fila inferior' },
+    { id: 53, title: 'Práctica: v & m', text: 'vida mano vaso mesa viga mapa nave meta vida mano vaso mesa', section: 'Fila inferior' },
+    { id: 54, title: 'Teclas c & ,', text: 'c , c , cc ,, c, ,c ccc ,,, dc k, c, ,c dc k, c, ,c dc k,', section: 'Fila inferior' },
+    { id: 55, title: 'Revisión: c & ,', text: 'dc k, c, ,c dc ,k ,c k, cc ,, c, ,c dc k, c, ,c dc ,k ,c', section: 'Fila inferior' },
+    { id: 56, title: 'Práctica: c & ,', text: 'casa, cosa, cama, cuna, cine, capa, cata, casa, cosa, cama', section: 'Fila inferior' },
+    // 57: Juego vmc, - omitido
+    { id: 58, title: 'Teclas x & .', text: 'x . x . xx .. x. .x xxx ... sx l. x. .x sx l. x. .x sx l.', section: 'Fila inferior' },
+    { id: 59, title: 'Revisión: x & .', text: 'sx l. x. .x sx .l .x l. xx .. x. .x sx l. x. .x sx .l .x', section: 'Fila inferior' },
+    { id: 60, title: 'Práctica: x & .', text: 'taxi. saxo. xilofón. examen. nexo. texto. taxi. saxo. xilofón', section: 'Fila inferior' },
+    { id: 61, title: 'Teclas z & -', text: 'z - z - zz -- z- -z zzz --- az ñ- z- -z az ñ- z- -z az ñ-', section: 'Fila inferior' },
+    { id: 62, title: 'Revisión: z & -', text: 'az ñ- z- -z az -ñ -z ñ- zz -- z- -z az ñ- z- -z az -ñ -z', section: 'Fila inferior' },
+    { id: 63, title: 'Práctica: z & -', text: 'zona-azul, pozo-profundo, taza-limpia, tiza-blanca, zona-azul', section: 'Fila inferior' },
+    // 64: Juego Teclas inferior - omitido
+    { id: 65, title: 'Teclas b & n', text: 'b n b n bb nn bn nb bbb nnn fb jn bn nb fb jn bn nb fb jn', section: 'Fila inferior' },
+    { id: 66, title: 'Revisión: b & n', text: 'fb jn bn nb fb nj nb jn bb nn bn nb fb jn bn nb fb nj nb', section: 'Fila inferior' },
+    { id: 67, title: 'Práctica: b & n', text: 'bueno nota boca nene bola nido beso nube bueno nota boca nene', section: 'Fila inferior' },
+    { id: 68, title: 'Toma un descanso', text: 'toma un breve descanso estirando los dedos y las muñecas', section: 'Fila inferior' },
+    { id: 69, title: 'Fila inferior: Izquierda', text: 'z x c v b zxcvb zxcvb zxcvb zxcvb z x c v b zxcvb zxcvb', section: 'Fila inferior' },
+    { id: 70, title: 'Fila inferior: Derecha', text: 'n m , . - nm,.- nm,.- nm,.- nm,.- n m , . - nm,.- nm,.-', section: 'Fila inferior' },
+    { id: 71, title: 'Práctica: Fila inferior', text: 'zxcvb nm,.- zxcvb nm,.- zxcvb nm,.- zxcvb nm,.- zxcvb', section: 'Fila inferior' },
+    // 72-73: Juegos Fila inferior - omitidos
+    { id: 74, title: 'Práctica: Sangría', text: '  en derecho penal, el acto delictivo requiere dolo o culpa.', section: 'Fila inferior' },
+
+    // Caracteres acentuados
+    { id: 75, title: 'Teclas a & á', text: 'a á a á aa áá aá áa aaa ááá sa lá aá áa sa lá aá áa sa', section: 'Caracteres acentuados' },
+    { id: 76, title: 'Revisión: a & á', text: 'sa lá aá áa sa ál áa lá aa áá aá áa sa lá aá áa sa ál áa', section: 'Caracteres acentuados' },
+    { id: 77, title: 'Práctica: a & á', text: 'árbol más allá cámara rápido página fácil árbol más allá', section: 'Caracteres acentuados' },
+    { id: 78, title: 'Teclas e & é', text: 'e é e é ee éé eé ée eee ééé de ké eé ée de ké eé ée de', section: 'Caracteres acentuados' },
+    { id: 79, title: 'Revisión: e & é', text: 'de ké eé ée de ék ée ké ee éé eé ée de ké eé ée de ék ée', section: 'Caracteres acentuados' },
+    { id: 80, title: 'Práctica: e & é', text: 'café bebé teléfono césped técnica héroe café bebé teléfono', section: 'Caracteres acentuados' },
+    // 81: Juego - omitido
+    { id: 82, title: 'Teclas i & í', text: 'i í i í ii íí ií íi iii ííí di kí ií íi di kí ií íi di', section: 'Caracteres acentuados' },
+    { id: 83, title: 'Revisión: i & í', text: 'di kí ií íi di ík íi kí ii íí ií íi di kí ií íi di ík íi', section: 'Caracteres acentuados' },
+    { id: 84, title: 'Práctica: i & í', text: 'país día difícil policía oír río mínimo país día difícil', section: 'Caracteres acentuados' },
+    { id: 85, title: 'Teclas o & ó', text: 'o ó o ó oo óó oó óo ooo óóó so ló oó óo so ló oó óo so', section: 'Caracteres acentuados' },
+    { id: 86, title: 'Revisión: o & ó', text: 'so ló oó óo so ól óo ló oo óó oó óo so ló oó óo so ól óo', section: 'Caracteres acentuados' },
+    { id: 87, title: 'Práctica: o & ó', text: 'canción camión acción corazón compás deudor canción camión', section: 'Caracteres acentuados' },
+    // 88: Juego - omitido
+    { id: 89, title: 'Teclas ü & ú', text: 'u ú u ú uu úú uú úu üü üü úú úú uü üu u ú u ú uu úú uú', section: 'Caracteres acentuados' },
+    { id: 90, title: 'Revisión: ü & ú', text: 'ju lú uú úu ju úl úu lú uu úú uú úu üü ju lú uú úu ju úl', section: 'Caracteres acentuados' },
+    { id: 91, title: 'Práctica: ü & ú', text: 'útil único música pingüino cigüeña vergüenza útil único música', section: 'Caracteres acentuados' },
+    // 92: Juego - omitido
+
+    // Palabras desafiantes 1
+    { id: 123, title: 'a, ha', text: 'a ha a ha ha a ha a ha ha a ha ha a a ha a ver ha visto a comer ha comido', section: 'Palabras desafiantes 1' },
+    { id: 124, title: 'asar, azar', text: 'asar azar asar azar azar asar azar asar asar carne azar del destino juego de azar', section: 'Palabras desafiantes 1' },
+    { id: 125, title: 'asta, hasta', text: 'asta hasta asta hasta hasta asta hasta asta hasta luego asta de bandera hasta mañana', section: 'Palabras desafiantes 1' },
+    { id: 126, title: 'basta, vasta', text: 'basta vasta basta vasta vasta basta vasta basta basta ya vasta llanura vasta experiencia', section: 'Palabras desafiantes 1' },
+    { id: 127, title: 'bienes, vienes', text: 'bienes vienes bienes vienes bienes vienes si vienes hoy bienes raíces bienes públicos', section: 'Palabras desafiantes 1' },
+    { id: 128, title: 'haya, allá', text: 'haya allá haya allá allá haya allá haya haya que haya paz ve hacia allá allá en el campo', section: 'Palabras desafiantes 1' },
+    { id: 129, title: 'casa, caza', text: 'casa caza casa caza caza casa caza casa casa de madera caza de animales ir a casa', section: 'Palabras desafiantes 1' },
+    { id: 130, title: 'se, sé', text: 'se sé se sé sé se sé se se sé se sé se cayó solo yo sé la verdad se fue ayer sé muy amable', section: 'Palabras desafiantes 1' }
 ];
 
 const KEYBOARD_ROWS = [
@@ -1123,55 +1223,128 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                         </button>
                     </div>
                     
-                    <div className="grid gap-4">
-                        {TRAINING_LESSONS.map((l, idx) => {
-                            const attempts = history.filter(h => h.lessonId === l.id);
-                            const bestAttempt = attempts.reduce((max, curr) => curr.wpm > max ? curr.wpm : max, 0);
-                            const latestAttempt = attempts.length > 0 ? attempts[attempts.length - 1] : null;
+                    <div className="space-y-10">
+                        {Object.entries(
+                            TRAINING_LESSONS.reduce((acc, l) => {
+                                if (!acc[l.section]) acc[l.section] = [];
+                                acc[l.section].push(l);
+                                return acc;
+                            }, {})
+                        ).map(([sectionName, lessons]) => (
+                            <div key={sectionName} className="border-t pt-8 first:border-t-0 first:pt-0">
+                                <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
+                                    <span className="w-2.5 h-6 bg-blue-600 rounded-full mr-3 inline-block"></span>
+                                    {sectionName}
+                                </h3>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                    {lessons.map((l) => {
+                                        const attempts = history.filter(h => h.lessonId === l.id);
+                                        const bestStars = attempts.reduce((max, curr) => curr.stars > max ? curr.stars : max, 0);
+                                        const completed = attempts.length > 0;
+                                        
+                                        // Determinar el elemento central visual
+                                        let centerEl = null;
+                                        if (l.id === 1) {
+                                            centerEl = <BookOpen className="w-9 h-9 text-blue-500" />;
+                                        } else if (l.title.includes("Teclas")) {
+                                            const keysText = l.title.replace("Teclas ", "").replace(" & ", "").replace(" y ", "");
+                                            centerEl = (
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-xl font-black text-slate-700 tracking-wide font-mono leading-none">{keysText}</span>
+                                                    <div className="w-8 h-4 border border-slate-300 bg-slate-100 rounded-sm mt-1.5 shadow-sm flex items-center justify-center">
+                                                        <div className="w-4 h-1 bg-slate-300 rounded-full opacity-60"></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        } else if (l.title.includes("Revisión")) {
+                                            const keysText = l.title.replace("Revisión: ", "").replace("Base + ", "").replace("Fila ", "");
+                                            centerEl = (
+                                                <div className="relative flex flex-col items-center justify-center">
+                                                    <Search className="w-9 h-9 text-amber-500" />
+                                                    <span className="text-[10px] font-bold text-slate-500 font-mono mt-1">{keysText.substring(0, 5)}</span>
+                                                </div>
+                                            );
+                                        } else if (l.title.includes("Práctica") || l.title.includes("Primeras")) {
+                                            centerEl = <Clock className="w-9 h-9 text-green-600" />;
+                                        } else if (l.title.includes("Postura") || l.title.includes("Piensa")) {
+                                            centerEl = <User className="w-9 h-9 text-indigo-500" />;
+                                        } else if (l.title.includes("descanso")) {
+                                            centerEl = <Coffee className="w-9 h-9 text-amber-700" />;
+                                        } else if (l.section === "Palabras desafiantes 1") {
+                                            centerEl = (
+                                                <span className="text-sm font-bold text-slate-600 font-mono bg-slate-100 px-2 py-1 rounded border border-slate-200 shadow-sm leading-tight text-center">
+                                                    {l.title}
+                                                </span>
+                                            );
+                                        } else {
+                                            centerEl = <Keyboard className="w-9 h-9 text-slate-500" />;
+                                        }
 
-                            const handleCardClick = (e) => {
-                                // Evitar que se active si hacen clic en un botón directamente
-                                if (e.target.closest('button')) return;
-                                setLessonId(l.id);
-                                setMetrics(latestAttempt);
-                                setPhase('results');
-                            };
+                                        return (
+                                            <div 
+                                                key={l.id}
+                                                onClick={() => {
+                                                    if (completed) {
+                                                        const latestAttempt = attempts[attempts.length - 1];
+                                                        setLessonId(l.id);
+                                                        setMetrics(latestAttempt);
+                                                        setPhase('results');
+                                                    } else {
+                                                        startLesson(l.id);
+                                                    }
+                                                }}
+                                                className={`
+                                                    relative flex flex-col justify-between p-4 bg-white border rounded-xl 
+                                                    shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-200 
+                                                    cursor-pointer select-none group aspect-square
+                                                    ${completed ? 'border-green-200 bg-green-50/10' : 'border-slate-200'}
+                                                `}
+                                            >
+                                                {/* Cabecera de la Tarjeta */}
+                                                <div className="flex justify-between items-center w-full">
+                                                    <span className="text-slate-400 font-bold text-xs">{l.id}</span>
+                                                    {completed && <CheckCircle className="w-4 h-4 text-green-600" />}
+                                                </div>
 
-                            return (
-                                <div 
-                                    key={l.id}
-                                    onClick={handleCardClick}
-                                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border rounded-xl bg-gray-50 hover:bg-blue-50/40 hover:border-blue-200 cursor-pointer transition-all text-left group"
-                                >
-                                    <div className="flex items-center">
-                                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center font-bold text-blue-600 shadow mr-4 group-hover:scale-110 transition-transform">
-                                            {idx + 1}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-gray-800 text-base">{l.title}</h3>
-                                            <p className="text-xs text-gray-400 font-mono mt-1">{l.text.substring(0, 36)}...</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center space-x-6 mt-4 sm:mt-0">
-                                        {bestAttempt > 0 && (
-                                            <div className="text-right">
-                                                <span className="block text-[10px] text-gray-400 uppercase font-bold">Mejor Velocidad</span>
-                                                <span className="text-sm font-bold text-gray-700">{bestAttempt} PPM</span>
+                                                {/* Icono/Contenido Visual Central */}
+                                                <div className="flex-1 flex items-center justify-center my-2 group-hover:scale-105 transition-transform duration-200">
+                                                    {centerEl}
+                                                </div>
+
+                                                {/* Pie de la Tarjeta */}
+                                                <div className="w-full">
+                                                    <h4 className="text-[11px] font-bold text-slate-700 truncate leading-tight mb-1" title={l.title}>
+                                                        {l.title}
+                                                    </h4>
+                                                    <div className="h-4 flex items-center justify-center">
+                                                        {completed && bestStars > 0 ? (
+                                                            <div className="flex justify-center text-yellow-400">
+                                                                {[1, 2, 3, 4, 5].map(starNum => (
+                                                                    <Star 
+                                                                        key={starNum} 
+                                                                        className={`w-3.5 h-3.5 ${starNum <= bestStars ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'}`} 
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    startLesson(l.id);
+                                                                }}
+                                                                className="text-[10px] text-blue-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                ENTRENAR
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
-                                        )}
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                startLesson(l.id);
-                                            }}
-                                            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm flex items-center shadow transition-all group-hover:scale-105"
-                                        >
-                                            Entrenar <Play className="w-4 h-4 ml-2" />
-                                        </button>
-                                    </div>
+                                        );
+                                    })}
                                 </div>
-                            );
-                        })}
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
@@ -1228,9 +1401,9 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                         metrics={metrics} 
                         onRetry={() => startLesson(lessonId)} 
                         onNext={() => {
-                            const nextId = lessonId + 1;
-                            if (TRAINING_LESSONS.find(l => l.id === nextId)) {
-                                startLesson(nextId);
+                            const currentIndex = TRAINING_LESSONS.findIndex(l => l.id === lessonId);
+                            if (currentIndex !== -1 && currentIndex + 1 < TRAINING_LESSONS.length) {
+                                startLesson(TRAINING_LESSONS[currentIndex + 1].id);
                             } else {
                                 setPhase('menu');
                             }
