@@ -1589,7 +1589,7 @@ const extractTextFromPdf = async (file, fromPage, toPage, enableFilters, margins
 const PreparacionTeorica = () => {
     const [text, setText] = useState('');
     const [speed, setSpeed] = useState('1.0');
-    const [engine, setEngine] = useState('neural'); // 'neural' o 'system'
+    const [engine, setEngine] = useState('system'); // 'neural' o 'system'
     const [isGenerating, setIsGenerating] = useState(false);
     const [playing, setPlaying] = useState(false);
     const [mp3Url, setMp3Url] = useState('');
@@ -1794,7 +1794,7 @@ const PreparacionTeorica = () => {
                 enableStrictFilters, 
                 { differentOddEven, marginsAll, marginsOdd, marginsEven }
             );
-            setText(extractedText.substring(0, maxCharacters));
+            setText(extractedText.substring(0, 100000));
             setError(`Texto extraído exitosamente de las páginas ${pdfFromPage} a la ${pdfToPage}. Se importaron ${extractedText.length.toLocaleString('es-AR')} caracteres.`);
         } catch (err) {
             console.error(err);
@@ -2314,74 +2314,74 @@ const PreparacionTeorica = () => {
                         </div>
 
                         {/* Barra de Herramientas de Formato */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-50 border border-gray-300 border-b-0 rounded-t-lg shadow-sm">
-                            <div className="flex flex-wrap items-center gap-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-100 border border-slate-300 border-b-0 rounded-t-lg shadow-sm">
+                            <div className="flex flex-wrap items-center gap-1.5">
                                 <button 
                                     onClick={() => execFormat('bold')} 
-                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 font-bold text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    className="p-1.5 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm flex items-center justify-center transition-colors min-w-[32px] h-8" 
                                     title="Negrita"
                                 >
-                                    <Bold className="w-3.5 h-3.5" />
+                                    <Bold size={16} />
                                 </button>
                                 <button 
                                     onClick={() => execFormat('italic')} 
-                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 italic text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    className="p-1.5 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm flex items-center justify-center transition-colors min-w-[32px] h-8" 
                                     title="Cursiva"
                                 >
-                                    <Italic className="w-3.5 h-3.5" />
+                                    <Italic size={16} />
                                 </button>
                                 <button 
                                     onClick={() => execFormat('underline')} 
-                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 underline text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    className="p-1.5 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm flex items-center justify-center transition-colors min-w-[32px] h-8" 
                                     title="Subrayado"
                                 >
-                                    <Underline className="w-3.5 h-3.5" />
+                                    <Underline size={16} />
                                 </button>
                                 <button 
                                     onClick={() => execFormat('backColor', '#fef08a')} 
-                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 bg-yellow-100/50 text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    className="p-1.5 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm flex items-center justify-center transition-colors min-w-[32px] h-8" 
                                     title="Resaltar Amarillo"
                                 >
-                                    <Highlighter className="w-3.5 h-3.5 text-yellow-600" />
+                                    <Highlighter size={16} className="text-yellow-600" />
                                 </button>
 
-                                <div className="w-px h-5 bg-slate-300 mx-1"></div>
+                                <div className="w-px h-6 bg-slate-300 mx-1.5"></div>
 
                                 <button 
                                     onClick={() => execFormat('justifyLeft')} 
-                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    className="p-1.5 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm flex items-center justify-center transition-colors min-w-[32px] h-8" 
                                     title="Alinear Izquierda"
                                 >
-                                    <AlignLeft className="w-3.5 h-3.5" />
+                                    <AlignLeft size={16} />
                                 </button>
                                 <button 
                                     onClick={() => execFormat('justifyCenter')} 
-                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    className="p-1.5 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm flex items-center justify-center transition-colors min-w-[32px] h-8" 
                                     title="Centrar"
                                 >
-                                    <AlignCenter className="w-3.5 h-3.5" />
+                                    <AlignCenter size={16} />
                                 </button>
                                 <button 
                                     onClick={() => execFormat('justifyRight')} 
-                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    className="p-1.5 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm flex items-center justify-center transition-colors min-w-[32px] h-8" 
                                     title="Alinear Derecha"
                                 >
-                                    <AlignRight className="w-3.5 h-3.5" />
+                                    <AlignRight size={16} />
                                 </button>
                                 <button 
                                     onClick={() => execFormat('justifyFull')} 
-                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    className="p-1.5 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm flex items-center justify-center transition-colors min-w-[32px] h-8" 
                                     title="Justificar"
                                 >
-                                    <AlignJustify className="w-3.5 h-3.5" />
+                                    <AlignJustify size={16} />
                                 </button>
                             </div>
                             
                             <button 
                                 onClick={handleSaveText}
-                                className="bg-[#002B5C] hover:bg-blue-900 text-white font-bold py-1 px-3 rounded text-xs flex items-center transition shadow-sm"
+                                className="bg-[#002B5C] hover:bg-blue-900 text-white font-bold py-1.5 px-3.5 rounded text-xs flex items-center transition shadow-sm h-8"
                             >
-                                <Save className="w-3.5 h-3.5 mr-1.5" /> Guardar en Historial
+                                <Save size={14} className="mr-1.5" /> Guardar en Historial
                             </button>
                         </div>
 
@@ -2390,13 +2390,15 @@ const PreparacionTeorica = () => {
                             ref={editorRef}
                             contentEditable={true}
                             onInput={handleEditorInput}
-                            className="w-full h-64 p-4 border border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-[#002B5C] focus:border-transparent font-sans text-gray-800 leading-relaxed text-sm overflow-y-auto bg-white"
+                            className="w-full h-64 p-4 border border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-[#002B5C] focus:border-transparent font-sans text-gray-800 leading-relaxed text-sm overflow-y-auto bg-white shadow-inner"
                             placeholder="El texto extraído aparecerá aquí. También puedes pegar tu propio texto directamente y darle formato..."
                             style={{ minHeight: '16rem' }}
                         />
 
                         <div className="flex justify-between text-xs text-gray-400 mt-1 select-none">
-                            <span>{plainText.length.toLocaleString('es-AR')} / {maxCharacters.toLocaleString('es-AR')} caracteres</span>
+                            <span className={plainText.length > maxCharacters ? "text-red-500 font-bold" : "text-gray-400"}>
+                                {plainText.length.toLocaleString('es-AR')} / {maxCharacters.toLocaleString('es-AR')} caracteres
+                            </span>
                             <span>{wordCount.toLocaleString('es-AR')} palabras | Duración estimada: {estimatedDuration}</span>
                         </div>
                     </div>
