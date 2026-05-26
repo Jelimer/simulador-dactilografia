@@ -1649,6 +1649,10 @@ const PreparacionTeorica = () => {
         return v;
     }, [availableVoices]);
 
+    const maxCharacters = useMemo(() => {
+        return engine === 'system' ? 100000 : 15000;
+    }, [engine]);
+
     // Calcular palabras e info del texto
     const wordCount = useMemo(() => {
         return text.trim() ? text.trim().split(/\s+/).length : 0;
@@ -1737,7 +1741,7 @@ const PreparacionTeorica = () => {
                 enableStrictFilters, 
                 { differentOddEven, marginsAll, marginsOdd, marginsEven }
             );
-            setText(extractedText.substring(0, 15000));
+            setText(extractedText.substring(0, maxCharacters));
             setError(`Texto extraído exitosamente de las páginas ${pdfFromPage} a la ${pdfToPage}. Se importaron ${extractedText.length.toLocaleString('es-AR')} caracteres.`);
         } catch (err) {
             console.error(err);
@@ -1760,6 +1764,11 @@ const PreparacionTeorica = () => {
         }
 
         if (engine === 'neural') {
+            if (text.length > 15000) {
+                setError("Para la voz neuronal, el texto no debe superar los 15.000 caracteres debido a limitaciones de carga del servidor. Reduce el texto o utiliza la Voz Local del Navegador.");
+                setIsGenerating(false);
+                return;
+            }
             try {
                 const response = await fetch('/api/tts', {
                     method: 'POST',
@@ -2183,10 +2192,10 @@ const PreparacionTeorica = () => {
                             className="w-full h-64 p-4 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C] font-sans text-gray-800 leading-relaxed text-sm"
                             placeholder="El texto extraído aparecerá aquí. También puedes pegar tu propio texto directamente..."
                             value={text}
-                            onChange={(e) => setText(e.target.value.substring(0, 15000))}
+                            onChange={(e) => setText(e.target.value.substring(0, maxCharacters))}
                         />
                         <div className="flex justify-between text-xs text-gray-400 mt-1">
-                            <span>{text.length.toLocaleString('es-AR')} / 15.000 caracteres</span>
+                            <span>{text.length.toLocaleString('es-AR')} / {maxCharacters.toLocaleString('es-AR')} caracteres</span>
                             <span>{wordCount.toLocaleString('es-AR')} palabras | Duración estimada: {estimatedDuration}</span>
                         </div>
                     </div>
