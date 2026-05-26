@@ -1523,7 +1523,7 @@ const cleanExtractedText = (text, pageNum, enableStrictFilters) => {
     return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 };
 
-const extractTextFromPdf = async (file, fromPage, toPage, enableFilters) => {
+const extractTextFromPdf = async (file, fromPage, toPage, enableFilters, marginsConfig = { differentOddEven: false, marginsAll: { top: 0, bottom: 0, left: 0, right: 0 } }) => {
     const pdfjsLib = await loadPdfJs();
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -1537,12 +1537,31 @@ const extractTextFromPdf = async (file, fromPage, toPage, enableFilters) => {
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
         
+        const pageMargins = !marginsConfig.differentOddEven 
+            ? marginsConfig.marginsAll 
+            : (pageNum % 2 === 1 ? marginsConfig.marginsOdd : marginsConfig.marginsEven);
+        
+        const viewport = page.getViewport({ scale: 1.0 });
+        const pageWidth = viewport.width;
+        const pageHeight = viewport.height;
+        
         let lastY = null;
         let textLines = [];
         let currentLine = "";
         
         for (const item of textContent.items) {
-            const y = item.transform[5]; 
+            const x = item.transform[4];
+            const y = item.transform[5];
+            
+            const topPct = ((pageHeight - y) / pageHeight) * 100;
+            const bottomPct = (y / pageHeight) * 100;
+            const leftPct = (x / pageWidth) * 100;
+            const rightPct = ((pageWidth - x) / pageWidth) * 100;
+            
+            if (topPct < pageMargins.top || bottomPct < pageMargins.bottom || leftPct < pageMargins.left || rightPct < pageMargins.right) {
+                continue;
+            }
+            
             if (lastY === null || Math.abs(y - lastY) < 5) {
                 currentLine += (currentLine ? " " : "") + item.str;
             } else {
@@ -1586,6 +1605,26 @@ const PreparacionTeorica = () => {
 
     const audioRef = useRef(null);
 
+    // PDF Margin and Document states
+    const [pdfDoc, setPdfDoc] = useState(null);
+    const [differentOddEven, setDifferentOddEven] = useState(false);
+    const [marginsAll, setMarginsAll] = useState({ top: 10, bottom: 10, left: 5, right: 5 });
+    const [marginsOdd, setMarginsOdd] = useState({ top: 10, bottom: 10, left: 5, right: 5 });
+    const [marginsEven, setMarginsEven] = useState({ top: 10, bottom: 10, left: 5, right: 5 });
+    
+    // Audio Player tracking states
+    const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+    const [audioDuration, setAudioDuration] = useState(0);
+    const [localChunkIndex, setLocalChunkIndex] = useState(0);
+    const [localTotalChunks, setLocalTotalChunks] = useState(0);
+
+    const playingRef = useRef(false);
+    const canvasRef = useRef(null);
+
+    useEffect(() => {
+        playingRef.current = playing;
+    }, [playing]);
+
     // Cargar voces del sistema
     useEffect(() => {
         const updateVoices = () => {
@@ -1627,23 +1666,31 @@ const PreparacionTeorica = () => {
         window.speechSynthesis.cancel();
         
         const chunks = splitTextIntoChunks(textToSpeak, 180);
+        setLocalTotalChunks(chunks.length);
+        setLocalChunkIndex(0);
         let currentChunkIdx = 0;
 
         const speakNext = () => {
-            if (currentChunkIdx >= chunks.length || !playing) {
+            if (currentChunkIdx >= chunks.length || !playingRef.current) {
                 setPlaying(false);
+                playingRef.current = false;
+                setLocalChunkIndex(0);
                 return;
             }
+            
+            setLocalChunkIndex(currentChunkIdx);
             const utterance = new SpeechSynthesisUtterance(chunks[currentChunkIdx]);
             if (activeVoice) utterance.voice = activeVoice;
             utterance.rate = parseFloat(rate);
             
             utterance.onend = () => {
                 currentChunkIdx++;
+                setLocalChunkIndex(currentChunkIdx);
                 speakNext();
             };
             utterance.onerror = () => {
                 setPlaying(false);
+                playingRef.current = false;
             };
             window.speechSynthesis.speak(utterance);
         };
@@ -1662,6 +1709,7 @@ const PreparacionTeorica = () => {
             const pdfjsLib = await loadPdfJs();
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            setPdfDoc(pdf);
             setPdfTotalPages(pdf.numPages);
             setPdfFromPage(1);
             setPdfToPage(Math.min(pdf.numPages, 3)); // Por defecto procesa las primeras 3 páginas
@@ -1670,6 +1718,7 @@ const PreparacionTeorica = () => {
             setError("No se pudo cargar el archivo PDF. Asegúrate de que sea un archivo válido.");
             setPdfFile(null);
             setPdfTotalPages(0);
+            setPdfDoc(null);
         } finally {
             setIsExtracting(false);
         }
@@ -1681,7 +1730,13 @@ const PreparacionTeorica = () => {
         setError("");
         
         try {
-            const { text: extractedText } = await extractTextFromPdf(pdfFile, pdfFromPage, pdfToPage, enableStrictFilters);
+            const { text: extractedText } = await extractTextFromPdf(
+                pdfFile, 
+                pdfFromPage, 
+                pdfToPage, 
+                enableStrictFilters, 
+                { differentOddEven, marginsAll, marginsOdd, marginsEven }
+            );
             setText(extractedText.substring(0, 15000));
             setError(`Texto extraído exitosamente de las páginas ${pdfFromPage} a la ${pdfToPage}. Se importaron ${extractedText.length.toLocaleString('es-AR')} caracteres.`);
         } catch (err) {
@@ -1701,6 +1756,7 @@ const PreparacionTeorica = () => {
             if (audioRef.current) audioRef.current.pause();
             if (window.speechSynthesis) window.speechSynthesis.cancel();
             setPlaying(false);
+            playingRef.current = false;
         }
 
         if (engine === 'neural') {
@@ -1722,6 +1778,7 @@ const PreparacionTeorica = () => {
                 const url = URL.createObjectURL(blob);
                 setMp3Url(url);
                 setPlaying(true);
+                playingRef.current = true;
                 
                 setTimeout(() => {
                     if (audioRef.current) {
@@ -1734,6 +1791,7 @@ const PreparacionTeorica = () => {
                 setError("El servidor de Vercel no está respondiendo (o estás en entorno de desarrollo local). Usando el motor de voz de tu dispositivo. La descarga de MP3 estará disponible tras publicar en Vercel.");
                 setMp3Url("");
                 setPlaying(true);
+                playingRef.current = true;
                 speakTextNative(text, speed);
             } finally {
                 setIsGenerating(false);
@@ -1741,6 +1799,7 @@ const PreparacionTeorica = () => {
         } else {
             setMp3Url("");
             setPlaying(true);
+            playingRef.current = true;
             speakTextNative(text, speed);
             setIsGenerating(false);
         }
@@ -1752,17 +1811,21 @@ const PreparacionTeorica = () => {
             if (playing) {
                 audio.pause();
                 setPlaying(false);
+                playingRef.current = false;
             } else {
                 audio.playbackRate = parseFloat(speed);
                 audio.play().catch(e => console.error(e));
                 setPlaying(true);
+                playingRef.current = true;
             }
         } else if (window.speechSynthesis) {
             if (playing) {
                 window.speechSynthesis.cancel();
                 setPlaying(false);
+                playingRef.current = false;
             } else {
                 setPlaying(true);
+                playingRef.current = true;
                 speakTextNative(text, speed);
             }
         }
@@ -1777,6 +1840,9 @@ const PreparacionTeorica = () => {
             window.speechSynthesis.cancel();
         }
         setPlaying(false);
+        playingRef.current = false;
+        setLocalChunkIndex(0);
+        setAudioCurrentTime(0);
     };
 
     const splitTextIntoChunks = (textToSplit, maxLength = 180) => {
@@ -1815,6 +1881,78 @@ const PreparacionTeorica = () => {
 
     const loadSampleText = () => {
         setText("Manual de Oficial de Justicia - Parte General. Acdo. 08/22 punto 31º - Anexo II. Régimen de Gestión Electrónica Capitulo 5, Articulos 27, 28 y 29. El presente acuerdo regula el envío de notificaciones y la firma digital obligatoria de todas las partes firmantes en los expedientes digitales de la provincia. La implementación de la plataforma Bus Federal de Justicia permitirá la comunicación y el intercambio ágil y seguro de documental, de forma electrónica, entre todos los organismos integrados a dicha plataforma, sin necesidad de establecer canales individuales, evitando así múltiples desarrollos redundantes, brindando seguridad transaccional.");
+    };
+
+    // Renderizado de página PDF
+    useEffect(() => {
+        if (!pdfDoc || !canvasRef.current) return;
+        let active = true;
+        
+        const render = async () => {
+            try {
+                const pageNum = Math.min(Math.max(1, pdfFromPage), pdfTotalPages);
+                const page = await pdfDoc.getPage(pageNum);
+                if (!active) return;
+                
+                const canvas = canvasRef.current;
+                const context = canvas.getContext('2d');
+                
+                const viewport = page.getViewport({ scale: 1.0 });
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport
+                }).promise;
+            } catch (e) {
+                console.error("Error rendering PDF page preview:", e);
+            }
+        };
+        
+        render();
+        return () => {
+            active = false;
+        };
+    }, [pdfDoc, pdfFromPage, pdfTotalPages]);
+
+    const getCurrentMarginsForPage = (pageNum) => {
+        if (!differentOddEven) return marginsAll;
+        return (pageNum % 2 === 1) ? marginsOdd : marginsEven;
+    };
+    
+    const currentMargins = getCurrentMarginsForPage(pdfFromPage);
+
+    const handleMarginChange = (key, val) => {
+        if (!differentOddEven) {
+            setMarginsAll(prev => ({ ...prev, [key]: val }));
+        } else {
+            if (pdfFromPage % 2 === 1) {
+                setMarginsOdd(prev => ({ ...prev, [key]: val }));
+            } else {
+                setMarginsEven(prev => ({ ...prev, [key]: val }));
+            }
+        }
+    };
+
+    const formatAudioTime = (seconds) => {
+        if (isNaN(seconds) || seconds === null) return "0:00";
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    };
+
+    const displayCurrentTime = mp3Url ? audioCurrentTime : (localTotalChunks > 0 ? (localChunkIndex / localTotalChunks) * (wordCount / 130) * 60 : 0);
+    const displayDuration = mp3Url ? audioDuration : (wordCount / 130) * 60;
+    const displayProgressValue = mp3Url ? audioCurrentTime : localChunkIndex;
+    const displayProgressMax = mp3Url ? audioDuration : localTotalChunks;
+
+    const handleAudioSeek = (e) => {
+        const newTime = parseFloat(e.target.value);
+        setAudioCurrentTime(newTime);
+        if (audioRef.current) {
+            audioRef.current.currentTime = newTime;
+        }
     };
 
     return (
@@ -1878,17 +2016,144 @@ const PreparacionTeorica = () => {
                                         />
                                         {pdfTotalPages && <span className="text-[10px] text-gray-400">(de {pdfTotalPages})</span>}
                                     </div>
-                                    <button 
-                                        onClick={handleExtractPdfText}
-                                        disabled={isExtracting}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded text-xs transition shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
-                                    >
-                                        {isExtracting ? "Extrayendo..." : "Extraer Texto"}
-                                    </button>
                                 </>
                             )}
                         </div>
                     </div>
+
+                    {/* Previsualizador de márgenes PDF */}
+                    {pdfFile && pdfDoc && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Columna Izquierda: Canvas Preview con Overlay */}
+                            <div className="flex flex-col items-center">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center">
+                                    Vista Previa (Pág. {pdfFromPage})
+                                </h4>
+                                <div className="relative border rounded shadow bg-white max-w-full overflow-hidden flex justify-center items-center">
+                                    <canvas ref={canvasRef} className="max-w-full" style={{ maxHeight: '420px', width: 'auto', height: 'auto' }} />
+                                    
+                                    {/* Guías de márgenes */}
+                                    <div 
+                                        className="absolute left-0 right-0 border-t border-dashed border-red-500 pointer-events-none w-full" 
+                                        style={{ top: `${currentMargins.top}%` }}
+                                    />
+                                    <div 
+                                        className="absolute left-0 right-0 border-b border-dashed border-red-500 pointer-events-none w-full" 
+                                        style={{ bottom: `${currentMargins.bottom}%` }}
+                                    />
+                                    <div 
+                                        className="absolute top-0 bottom-0 border-l border-dashed border-red-500 pointer-events-none h-full" 
+                                        style={{ left: `${currentMargins.left}%` }}
+                                    />
+                                    <div 
+                                        className="absolute top-0 bottom-0 border-r border-dashed border-red-500 pointer-events-none h-full" 
+                                        style={{ right: `${currentMargins.right}%` }}
+                                    />
+                                    
+                                    {/* Zona de exclusión (Sombreado exterior) */}
+                                    <div className="absolute top-0 left-0 right-0 bg-red-500/10 pointer-events-none w-full" style={{ height: `${currentMargins.top}%` }} />
+                                    <div className="absolute bottom-0 left-0 right-0 bg-red-500/10 pointer-events-none w-full" style={{ height: `${currentMargins.bottom}%` }} />
+                                    <div className="absolute top-0 bottom-0 left-0 bg-red-500/10 pointer-events-none h-full" style={{ width: `${currentMargins.left}%` }} />
+                                    <div className="absolute top-0 bottom-0 right-0 bg-red-500/10 pointer-events-none h-full" style={{ width: `${currentMargins.right}%` }} />
+                                </div>
+                                <span className="text-[10px] text-slate-400 mt-2 text-center">
+                                    Las áreas sombreadas en rojo se excluirán del texto extraído.
+                                </span>
+                            </div>
+
+                            {/* Columna Derecha: Configuración de Márgenes */}
+                            <div className="flex flex-col justify-between space-y-4">
+                                <div>
+                                    <span className="block text-sm font-semibold text-slate-800 mb-1">📐 Reglas de Márgenes de Extracción:</span>
+                                    <span className="block text-xs text-slate-500 mb-4">Ajusta los porcentajes de exclusión para ignorar encabezados, pies de página o márgenes laterales.</span>
+                                    
+                                    <div className="flex items-center space-x-3 mb-6 bg-white p-3 border rounded-lg">
+                                        <input 
+                                            type="checkbox" 
+                                            id="diffOddEven"
+                                            className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                                            checked={differentOddEven}
+                                            onChange={(e) => setDifferentOddEven(e.target.checked)}
+                                        />
+                                        <label htmlFor="diffOddEven" className="text-xs text-slate-700 font-semibold cursor-pointer select-none">
+                                            Márgenes diferentes para páginas pares e impares
+                                        </label>
+                                    </div>
+
+                                    {differentOddEven && (
+                                        <div className="mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-block bg-blue-100 text-blue-800">
+                                            Ajustando márgenes de páginas {pdfFromPage % 2 === 1 ? 'IMPARES (1, 3, ...)' : 'PARES (2, 4, ...)'}
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-4 bg-white p-4 border rounded-xl shadow-inner">
+                                        <div>
+                                            <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                                                <span>Margen Superior:</span>
+                                                <span className="font-mono text-red-600">{currentMargins.top}%</span>
+                                            </div>
+                                            <input 
+                                                type="range" min="0" max="45" step="1"
+                                                className="w-full accent-red-500 h-1.5 rounded bg-slate-200 cursor-pointer"
+                                                value={currentMargins.top}
+                                                onChange={(e) => handleMarginChange('top', Number(e.target.value))}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                                                <span>Margen Inferior:</span>
+                                                <span className="font-mono text-red-600">{currentMargins.bottom}%</span>
+                                            </div>
+                                            <input 
+                                                type="range" min="0" max="45" step="1"
+                                                className="w-full accent-red-500 h-1.5 rounded bg-slate-200 cursor-pointer"
+                                                value={currentMargins.bottom}
+                                                onChange={(e) => handleMarginChange('bottom', Number(e.target.value))}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                                                <span>Margen Izquierdo:</span>
+                                                <span className="font-mono text-red-600">{currentMargins.left}%</span>
+                                            </div>
+                                            <input 
+                                                type="range" min="0" max="35" step="1"
+                                                className="w-full accent-red-500 h-1.5 rounded bg-slate-200 cursor-pointer"
+                                                value={currentMargins.left}
+                                                onChange={(e) => handleMarginChange('left', Number(e.target.value))}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                                                <span>Margen Derecho:</span>
+                                                <span className="font-mono text-red-600">{currentMargins.right}%</span>
+                                            </div>
+                                            <input 
+                                                type="range" min="0" max="35" step="1"
+                                                className="w-full accent-red-500 h-1.5 rounded bg-slate-200 cursor-pointer"
+                                                value={currentMargins.right}
+                                                onChange={(e) => handleMarginChange('right', Number(e.target.value))}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="pt-4 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500">
+                                    <span>Páginas a extraer: {pdfFromPage} a {pdfToPage}</span>
+                                    <button 
+                                        onClick={handleExtractPdfText}
+                                        disabled={isExtracting}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-lg transition shadow disabled:bg-slate-300 disabled:cursor-not-allowed"
+                                    >
+                                        {isExtracting ? "Procesando..." : "Aplicar y Extraer Texto"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Checkbox Filtros Exclusión Estricta */}
                     <div className="flex items-start space-x-3 bg-blue-50/50 p-4 border border-blue-100 rounded-lg">
@@ -1985,68 +2250,89 @@ const PreparacionTeorica = () => {
 
             {/* Custom Audio Player Card */}
             {(mp3Url || playing) && (
-                <div className="bg-gradient-to-r from-[#001f40] to-[#002B5C] p-8 rounded-2xl shadow-lg border border-[#002B5C] text-white flex flex-col md:flex-row items-center justify-between space-y-6 md:space-y-0">
-                    <div className="flex items-center space-x-6">
-                        <div className="p-4 bg-white/10 rounded-full backdrop-blur-sm border border-white/10">
-                            {playing ? (
-                                <div className="flex items-end justify-center space-x-1 w-8 h-8">
-                                    {[...Array(5)].map((_, i) => (
-                                        <div 
-                                            key={i} 
-                                            className="w-1 bg-yellow-400 rounded-full equalizer-bar" 
-                                            style={{ 
-                                                animationDelay: `${i * 0.1}s`,
-                                                animationDuration: `${0.5 + (i % 2) * 0.2}s`,
-                                                height: '30%'
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-                            ) : (
-                                <Award className="w-8 h-8 text-yellow-400" />
+                <div className="bg-gradient-to-r from-[#001f40] to-[#002B5C] p-6 rounded-2xl shadow-lg border border-[#002B5C] text-white flex flex-col space-y-4">
+                    <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+                        <div className="flex items-center space-x-6">
+                            <div className="p-4 bg-white/10 rounded-full backdrop-blur-sm border border-white/10">
+                                {playing ? (
+                                    <div className="flex items-end justify-center space-x-1 w-8 h-8">
+                                        {[...Array(5)].map((_, i) => (
+                                            <div 
+                                                key={i} 
+                                                className="w-1 bg-yellow-400 rounded-full equalizer-bar" 
+                                                style={{ 
+                                                    animationDelay: `${i * 0.1}s`,
+                                                    animationDuration: `${0.5 + (i % 2) * 0.2}s`,
+                                                    height: '30%'
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <Award className="w-8 h-8 text-yellow-400" />
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg">Reproductor de Audio de Estudio</h3>
+                                <p className="text-xs text-gray-300 mt-1">
+                                    {mp3Url ? "Voz Neuronal Argentina - Archivo MP3 de Alta Calidad" : `Voz Local del Navegador: ${activeVoice ? activeVoice.name : 'Español'}`}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center space-x-4">
+                            <button 
+                                onClick={togglePlayback}
+                                className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold px-6 py-2.5 rounded-full text-sm flex items-center transition-colors shadow"
+                            >
+                                {playing ? "PAUSAR" : "REPRODUCIR"}
+                            </button>
+                            <button 
+                                onClick={stopPlayback}
+                                className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold px-5 py-2.5 rounded-full text-sm transition-colors"
+                            >
+                                DETENER
+                            </button>
+                            {mp3Url && (
+                                <a 
+                                    href={mp3Url} 
+                                    download="preparacion-teorica.mp3"
+                                    className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2.5 rounded-full text-sm flex items-center transition-colors shadow border border-green-500"
+                                >
+                                    DESCARGAR MP3
+                                </a>
                             )}
                         </div>
-                        <div>
-                            <h3 className="font-bold text-lg">Reproductor de Audio de Estudio</h3>
-                            <p className="text-xs text-gray-300 mt-1">
-                                {mp3Url ? "Voz Neuronal Argentina - Archivo MP3 de Alta Calidad" : `Voz Local del Navegador: ${activeVoice ? activeVoice.name : 'Español'}`}
-                            </p>
-                        </div>
                     </div>
 
-                    <div className="flex items-center space-x-4">
-                        <button 
-                            onClick={togglePlayback}
-                            className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold px-6 py-2.5 rounded-full text-sm flex items-center transition-colors shadow"
-                        >
-                            {playing ? "PAUSAR" : "REPRODUCIR"}
-                        </button>
-                        <button 
-                            onClick={stopPlayback}
-                            className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold px-5 py-2.5 rounded-full text-sm transition-colors"
-                        >
-                            DETENER
-                        </button>
-                        {mp3Url && (
-                            <a 
-                                href={mp3Url} 
-                                download="preparacion-teorica.mp3"
-                                className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2.5 rounded-full text-sm flex items-center transition-colors shadow border border-green-500"
-                            >
-                                DESCARGAR MP3
-                            </a>
-                        )}
-                    </div>
-
-                    {mp3Url && (
-                        <audio 
-                            ref={audioRef} 
-                            src={mp3Url} 
-                            onEnded={() => setPlaying(false)} 
-                            style={{ display: 'none' }}
+                    {/* Progress Bar & Seek Slider */}
+                    <div className="flex items-center space-x-4 w-full bg-black/20 p-3 rounded-lg border border-white/5">
+                        <span className="text-xs font-mono select-none">{formatAudioTime(displayCurrentTime)}</span>
+                        
+                        <input 
+                            type="range"
+                            min="0"
+                            max={displayProgressMax || 100}
+                            value={displayProgressValue}
+                            onChange={handleAudioSeek}
+                            disabled={!mp3Url}
+                            className="flex-1 accent-yellow-400 h-1.5 rounded-lg bg-white/20 appearance-none cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed"
                         />
-                    )}
+                        
+                        <span className="text-xs font-mono select-none">{formatAudioTime(displayDuration)}</span>
+                    </div>
                 </div>
+            )}
+
+            {mp3Url && (
+                <audio 
+                    ref={audioRef} 
+                    src={mp3Url} 
+                    onEnded={() => setPlaying(false)} 
+                    onTimeUpdate={(e) => setAudioCurrentTime(e.target.currentTime)}
+                    onLoadedMetadata={(e) => setAudioDuration(e.target.duration)}
+                    style={{ display: 'none' }}
+                />
             )}
         </div>
     );
