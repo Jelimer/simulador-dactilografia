@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
     Play, RotateCcw, CheckCircle, Clock, User, BookOpen, Settings,
     Star, Volume2, VolumeX, Award, ArrowLeft, History, Eye, Trash,
-    Search, Coffee, Keyboard, HelpCircle
+    Search, Coffee, Keyboard, HelpCircle, Bold, Italic, Underline,
+    AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter, Save, FileText
 } from 'lucide-react';
 
 // ==========================================
@@ -1620,10 +1621,36 @@ const PreparacionTeorica = () => {
 
     const playingRef = useRef(false);
     const canvasRef = useRef(null);
+    const editorRef = useRef(null);
+    const utteranceRef = useRef(null);
+
+    // History and versions of theoretical texts
+    const [activeTextId, setActiveTextId] = useState(null);
+    const [savedTexts, setSavedTexts] = useState(() => {
+        try {
+            const saved = localStorage.getItem('dactilografia_teoria_historial');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('dactilografia_teoria_historial', JSON.stringify(savedTexts));
+        } catch (e) {}
+    }, [savedTexts]);
 
     useEffect(() => {
         playingRef.current = playing;
     }, [playing]);
+
+    // Keep editor sync for loaded files (PDF / History)
+    useEffect(() => {
+        if (editorRef.current && document.activeElement !== editorRef.current) {
+            editorRef.current.innerHTML = text || "";
+        }
+    }, [text]);
 
     // Cargar voces del sistema
     useEffect(() => {
@@ -1653,10 +1680,24 @@ const PreparacionTeorica = () => {
         return engine === 'system' ? 100000 : 15000;
     }, [engine]);
 
+    const stripHtml = (html) => {
+        if (!html) return "";
+        if (typeof window === 'undefined') {
+            return html.replace(/<[^>]*>/g, '');
+        }
+        const tmp = document.createElement("DIV");
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || "";
+    };
+
+    const plainText = useMemo(() => {
+        return stripHtml(text);
+    }, [text]);
+
     // Calcular palabras e info del texto
     const wordCount = useMemo(() => {
-        return text.trim() ? text.trim().split(/\s+/).length : 0;
-    }, [text]);
+        return plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
+    }, [plainText]);
 
     const estimatedDuration = useMemo(() => {
         const totalSeconds = Math.round((wordCount / 130) * 60);
@@ -1669,7 +1710,8 @@ const PreparacionTeorica = () => {
         if (!window.speechSynthesis) return;
         window.speechSynthesis.cancel();
         
-        const chunks = splitTextIntoChunks(textToSpeak, 180);
+        const plainTextToSpeak = stripHtml(textToSpeak);
+        const chunks = splitTextIntoChunks(plainTextToSpeak, 180);
         setLocalTotalChunks(chunks.length);
         setLocalChunkIndex(0);
         let currentChunkIdx = 0;
@@ -1684,7 +1726,11 @@ const PreparacionTeorica = () => {
             
             setLocalChunkIndex(currentChunkIdx);
             const utterance = new SpeechSynthesisUtterance(chunks[currentChunkIdx]);
-            if (activeVoice) utterance.voice = activeVoice;
+            if (activeVoice) {
+                utterance.voice = activeVoice;
+            } else {
+                utterance.lang = 'es-AR';
+            }
             utterance.rate = parseFloat(rate);
             
             utterance.onend = () => {
@@ -1692,14 +1738,21 @@ const PreparacionTeorica = () => {
                 setLocalChunkIndex(currentChunkIdx);
                 speakNext();
             };
-            utterance.onerror = () => {
-                setPlaying(false);
-                playingRef.current = false;
+            utterance.onerror = (e) => {
+                console.error("Speech synthesis utterance error", e);
+                if (e.error !== 'interrupted') {
+                    setPlaying(false);
+                    playingRef.current = false;
+                }
             };
+            
+            utteranceRef.current = utterance;
             window.speechSynthesis.speak(utterance);
         };
         
-        speakNext();
+        setTimeout(() => {
+            speakNext();
+        }, 100);
     };
 
     const handlePdfFileChange = async (e) => {
@@ -1763,8 +1816,10 @@ const PreparacionTeorica = () => {
             playingRef.current = false;
         }
 
+        const plainTextToSpeak = stripHtml(text);
+
         if (engine === 'neural') {
-            if (text.length > 15000) {
+            if (plainTextToSpeak.length > 15000) {
                 setError("Para la voz neuronal, el texto no debe superar los 15.000 caracteres debido a limitaciones de carga del servidor. Reduce el texto o utiliza la Voz Local del Navegador.");
                 setIsGenerating(false);
                 return;
@@ -1775,7 +1830,7 @@ const PreparacionTeorica = () => {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ text, speed }),
+                    body: JSON.stringify({ text: plainTextToSpeak, speed }),
                 });
 
                 if (!response.ok) {
@@ -1801,7 +1856,7 @@ const PreparacionTeorica = () => {
                 setMp3Url("");
                 setPlaying(true);
                 playingRef.current = true;
-                speakTextNative(text, speed);
+                speakTextNative(plainTextToSpeak, speed);
             } finally {
                 setIsGenerating(false);
             }
@@ -1809,7 +1864,7 @@ const PreparacionTeorica = () => {
             setMp3Url("");
             setPlaying(true);
             playingRef.current = true;
-            speakTextNative(text, speed);
+            speakTextNative(plainTextToSpeak, speed);
             setIsGenerating(false);
         }
     };
@@ -1835,7 +1890,7 @@ const PreparacionTeorica = () => {
             } else {
                 setPlaying(true);
                 playingRef.current = true;
-                speakTextNative(text, speed);
+                speakTextNative(plainText, speed);
             }
         }
     };
@@ -1964,6 +2019,67 @@ const PreparacionTeorica = () => {
         }
     };
 
+    const execFormat = (command, value = null) => {
+        document.execCommand(command, false, value);
+        if (editorRef.current) {
+            setText(editorRef.current.innerHTML);
+        }
+    };
+
+    const handleEditorInput = (e) => {
+        setText(e.target.innerHTML);
+    };
+
+    const handleSaveText = () => {
+        const plain = stripHtml(text).trim();
+        if (!plain) {
+            setError("No hay contenido para guardar.");
+            return;
+        }
+
+        let defaultTitle = pdfFile ? pdfFile.name : "";
+        if (defaultTitle && pdfFromPage && pdfToPage) {
+            defaultTitle += ` (Pág ${pdfFromPage}-${pdfToPage})`;
+        } else {
+            defaultTitle = plain.substring(0, 30) + (plain.length > 30 ? "..." : "");
+        }
+
+        const title = window.prompt("Ingrese un título para guardar el texto:", defaultTitle);
+        if (title === null) return; // Cancelled
+
+        const timestamp = new Date().toLocaleString('es-AR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        if (activeTextId) {
+            const overwrite = window.confirm("¿Deseas sobreescribir el texto seleccionado en el historial? (Mantiene esta como la última versión correcta)");
+            if (overwrite) {
+                setSavedTexts(prev => prev.map(item => 
+                    item.id === activeTextId 
+                        ? { ...item, title: title || item.title, content: text, timestamp }
+                        : item
+                ));
+                setError(`Texto "${title || 'Sin Título'}" actualizado en el historial.`);
+                return;
+            }
+        }
+
+        const newId = Date.now().toString();
+        const newItem = {
+            id: newId,
+            title: title || "Texto sin título",
+            content: text,
+            timestamp
+        };
+        setSavedTexts(prev => [newItem, ...prev]);
+        setActiveTextId(newId);
+        setError(`Texto "${title || "Texto sin título"}" guardado en el historial.`);
+    };
+
     return (
         <div className="w-full space-y-8">
             <style>{`
@@ -1974,6 +2090,12 @@ const PreparacionTeorica = () => {
                 }
                 .equalizer-bar {
                     animation: equalize 0.8s ease-in-out infinite;
+                }
+                [contenteditable]:empty:before {
+                    content: attr(placeholder);
+                    color: #9ca3af;
+                    pointer-events: none;
+                    display: block;
                 }
             `}</style>
 
@@ -2181,21 +2303,100 @@ const PreparacionTeorica = () => {
                     <div>
                         <div className="flex justify-between items-center mb-2">
                             <label className="text-sm font-semibold text-gray-700">Texto Teórico a Procesar:</label>
+                            <div className="flex items-center space-x-4">
+                                <button 
+                                    onClick={loadSampleText}
+                                    className="text-xs text-blue-600 hover:underline font-semibold"
+                                >
+                                    Cargar Ejemplo del Manual
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Barra de Herramientas de Formato */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-50 border border-gray-300 border-b-0 rounded-t-lg shadow-sm">
+                            <div className="flex flex-wrap items-center gap-1">
+                                <button 
+                                    onClick={() => execFormat('bold')} 
+                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 font-bold text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    title="Negrita"
+                                >
+                                    <Bold className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                    onClick={() => execFormat('italic')} 
+                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 italic text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    title="Cursiva"
+                                >
+                                    <Italic className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                    onClick={() => execFormat('underline')} 
+                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 underline text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    title="Subrayado"
+                                >
+                                    <Underline className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                    onClick={() => execFormat('backColor', '#fef08a')} 
+                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 bg-yellow-100/50 text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    title="Resaltar Amarillo"
+                                >
+                                    <Highlighter className="w-3.5 h-3.5 text-yellow-600" />
+                                </button>
+
+                                <div className="w-px h-5 bg-slate-300 mx-1"></div>
+
+                                <button 
+                                    onClick={() => execFormat('justifyLeft')} 
+                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    title="Alinear Izquierda"
+                                >
+                                    <AlignLeft className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                    onClick={() => execFormat('justifyCenter')} 
+                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    title="Centrar"
+                                >
+                                    <AlignCenter className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                    onClick={() => execFormat('justifyRight')} 
+                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    title="Alinear Derecha"
+                                >
+                                    <AlignRight className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                    onClick={() => execFormat('justifyFull')} 
+                                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 text-xs flex items-center justify-center border border-transparent hover:border-slate-300" 
+                                    title="Justificar"
+                                >
+                                    <AlignJustify className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                            
                             <button 
-                                onClick={loadSampleText}
-                                className="text-xs text-blue-600 hover:underline font-semibold"
+                                onClick={handleSaveText}
+                                className="bg-[#002B5C] hover:bg-blue-900 text-white font-bold py-1 px-3 rounded text-xs flex items-center transition shadow-sm"
                             >
-                                Cargar Ejemplo del Manual
+                                <Save className="w-3.5 h-3.5 mr-1.5" /> Guardar en Historial
                             </button>
                         </div>
-                        <textarea
-                            className="w-full h-64 p-4 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C] font-sans text-gray-800 leading-relaxed text-sm"
-                            placeholder="El texto extraído aparecerá aquí. También puedes pegar tu propio texto directamente..."
-                            value={text}
-                            onChange={(e) => setText(e.target.value.substring(0, maxCharacters))}
+
+                        {/* Editor de Texto Enriquecido */}
+                        <div 
+                            ref={editorRef}
+                            contentEditable={true}
+                            onInput={handleEditorInput}
+                            className="w-full h-64 p-4 border border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-[#002B5C] focus:border-transparent font-sans text-gray-800 leading-relaxed text-sm overflow-y-auto bg-white"
+                            placeholder="El texto extraído aparecerá aquí. También puedes pegar tu propio texto directamente y darle formato..."
+                            style={{ minHeight: '16rem' }}
                         />
-                        <div className="flex justify-between text-xs text-gray-400 mt-1">
-                            <span>{text.length.toLocaleString('es-AR')} / {maxCharacters.toLocaleString('es-AR')} caracteres</span>
+
+                        <div className="flex justify-between text-xs text-gray-400 mt-1 select-none">
+                            <span>{plainText.length.toLocaleString('es-AR')} / {maxCharacters.toLocaleString('es-AR')} caracteres</span>
                             <span>{wordCount.toLocaleString('es-AR')} palabras | Duración estimada: {estimatedDuration}</span>
                         </div>
                     </div>
@@ -2343,6 +2544,78 @@ const PreparacionTeorica = () => {
                     style={{ display: 'none' }}
                 />
             )}
+
+            {/* Historial de Apuntes y Textos Teóricos */}
+            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mt-8">
+                <div className="flex justify-between items-center mb-4 border-b border-slate-200 pb-2">
+                    <h3 className="text-sm font-bold text-slate-800 flex items-center">
+                        <FileText className="w-4 h-4 mr-2 text-blue-600" /> Historial de Textos Teóricos Guardados
+                    </h3>
+                    {savedTexts.length > 0 && (
+                        <button 
+                            onClick={() => {
+                                if (window.confirm("¿Seguro que deseas borrar todo el historial de apuntes teóricos?")) {
+                                    setSavedTexts([]);
+                                    setActiveTextId(null);
+                                    localStorage.removeItem('dactilografia_teoria_historial');
+                                }
+                            }}
+                            className="text-[10px] text-red-500 hover:text-red-700 font-semibold border border-red-200 rounded px-2.5 py-1 hover:bg-red-50 transition"
+                        >
+                            Borrar Todo
+                        </button>
+                    )}
+                </div>
+
+                {savedTexts.length === 0 ? (
+                    <p className="text-center text-xs text-slate-400 py-6">No tienes apuntes teóricos guardados en el historial.</p>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {savedTexts.map((item) => (
+                            <div 
+                                key={item.id}
+                                className={`p-4 rounded-xl border bg-white shadow-sm flex flex-col justify-between transition hover:border-blue-300 ${activeTextId === item.id ? 'border-blue-500 ring-2 ring-blue-50' : 'border-slate-200'}`}
+                            >
+                                <div className="mb-3">
+                                    <div className="flex justify-between items-start gap-2">
+                                        <h4 className="font-bold text-xs text-slate-700 truncate max-w-[70%]" title={item.title}>
+                                            {item.title}
+                                        </h4>
+                                        <span className="text-[9px] text-slate-400 font-mono whitespace-nowrap">{item.timestamp}</span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 line-clamp-2 mt-1.5 leading-relaxed">
+                                        {stripHtml(item.content)}
+                                    </p>
+                                </div>
+                                <div className="flex justify-end space-x-3 pt-2 border-t border-slate-100 text-[10px] font-bold">
+                                    <button 
+                                        onClick={() => {
+                                            setText(item.content);
+                                            setActiveTextId(item.id);
+                                            setError(`Cargado del historial: "${item.title}"`);
+                                        }}
+                                        className="text-blue-600 hover:text-blue-800 transition"
+                                    >
+                                        Cargar
+                                    </button>
+                                    <span className="text-slate-200 select-none">|</span>
+                                    <button 
+                                        onClick={() => {
+                                            if (window.confirm(`¿Seguro que deseas eliminar "${item.title}" del historial?`)) {
+                                                setSavedTexts(prev => prev.filter(x => x.id !== item.id));
+                                                if (activeTextId === item.id) setActiveTextId(null);
+                                            }
+                                        }}
+                                        className="text-red-500 hover:text-red-700 transition"
+                                    >
+                                        Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
