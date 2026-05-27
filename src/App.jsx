@@ -1343,7 +1343,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
     };
 
     return (
-        <div className="w-full max-w-7xl mx-auto flex flex-col items-center">
+        <div className="w-full max-w-7xl mx-auto">
             
             {phase === 'menu' && (
                 <div className="w-full bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
