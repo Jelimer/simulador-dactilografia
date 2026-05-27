@@ -721,11 +721,22 @@ const HandsGuide = ({ expectedChar }) => {
 // COMPONENTE: GRÁFICOS DE EVOLUCIÓN
 // ==========================================
 const EvolutionCharts = ({ history, currentLessonId }) => {
-    const lessonAttempts = useMemo(() => {
-        return history.filter(item => item.lessonId === currentLessonId).slice(-5);
+    const allAttempts = useMemo(() => {
+        return history.filter(item => item.lessonId === currentLessonId);
     }, [history, currentLessonId]);
 
-    if (lessonAttempts.length === 0) {
+    const [startIndex, setStartIndex] = useState(0);
+    const [endIndex, setEndIndex] = useState(0);
+
+    // Keep range in sync when allAttempts changes
+    useEffect(() => {
+        if (allAttempts.length > 0) {
+            setStartIndex(Math.max(0, allAttempts.length - 5)); // default to last 5, but let them filter everything
+            setEndIndex(allAttempts.length - 1);
+        }
+    }, [allAttempts.length]);
+
+    if (allAttempts.length === 0) {
         return (
             <div className="bg-white p-6 rounded-xl border border-gray-200 text-center text-gray-500 text-sm mt-8">
                 Realiza más intentos de esta lección para registrar la gráfica de evolución.
@@ -733,69 +744,194 @@ const EvolutionCharts = ({ history, currentLessonId }) => {
         );
     }
 
-    const maxWpm = Math.max(...lessonAttempts.map(a => a.wpm), 30);
+    const filteredAttempts = allAttempts.slice(startIndex, endIndex + 1);
+
+    const maxWpm = Math.max(...filteredAttempts.map(a => a.wpm), 30);
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 w-full">
-            {/* Gráfico de Velocidad */}
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-                <h4 className="text-center text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Velocidad PPM</h4>
-                <div className="h-32 flex items-end justify-around border-b border-gray-200 relative mt-4">
-                    <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-0 pointer-events-none"></div>
-                    <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-1/2 pointer-events-none"></div>
+        <div className="w-full space-y-6 mt-8">
+            {/* Filtro de Línea de Tiempo */}
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm w-full flex flex-col">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-4 flex items-center">
+                    <Clock className="w-4 h-4 mr-2 text-blue-600" /> Línea de Tiempo de Intentos
+                </h4>
+                
+                {/* Visual timeline track */}
+                <div className="relative flex items-center justify-between w-full px-6 py-8 bg-slate-50 border border-slate-100 rounded-xl mb-4 select-none">
+                    {/* The track line */}
+                    <div className="absolute left-6 right-6 h-1.5 bg-slate-200 top-1/2 -translate-y-1/2 rounded-full"></div>
                     
-                    {lessonAttempts.map((attempt, idx) => {
-                        const pctHeight = Math.max(5, (attempt.wpm / maxWpm) * 100);
+                    {/* Active range line */}
+                    <div 
+                        className="absolute h-1.5 bg-blue-500 top-1/2 -translate-y-1/2 rounded-full transition-all duration-300"
+                        style={{
+                            left: `${6 + (startIndex / (allAttempts.length - 1 || 1)) * 88}%`,
+                            right: `${6 + ((allAttempts.length - 1 - endIndex) / (allAttempts.length - 1 || 1)) * 88}%`
+                        }}
+                    ></div>
+                    
+                    {allAttempts.map((att, idx) => {
+                        const isActive = idx >= startIndex && idx <= endIndex;
+                        const pct = (idx / (allAttempts.length - 1 || 1)) * 100;
+                        
                         return (
-                            <div key={attempt.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
-                                <span className="absolute -top-8 bg-gray-800 text-white text-[11px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-md pointer-events-none">
-                                    {Math.round(attempt.wpm)} PPM
-                                </span>
+                            <div 
+                                key={att.id || idx}
+                                style={{ left: `calc(6% + ${pct * 0.88}%)` }}
+                                className="absolute -translate-x-1/2 top-1/2 -translate-y-1/2 group cursor-pointer z-20"
+                                onClick={() => {
+                                    if (idx < startIndex) {
+                                        setStartIndex(idx);
+                                    } else if (idx > endIndex) {
+                                        setEndIndex(idx);
+                                    } else {
+                                        // Clicked inside active range, adjust closest boundary
+                                        if (idx - startIndex < endIndex - idx) {
+                                            setStartIndex(idx);
+                                        } else {
+                                            setEndIndex(idx);
+                                        }
+                                    }
+                                }}
+                            >
+                                {/* Dot indicator */}
                                 <div 
-                                    style={{ height: `${pctHeight}%` }} 
-                                    className="w-full bg-[#3e5c76] rounded-t hover:bg-blue-600 transition-all duration-500 shadow-sm"
-                                ></div>
-                            </div>
-                        );
-                    })}
-                </div>
-                <div className="flex justify-around mt-2">
-                    {lessonAttempts.map((att, idx) => (
-                        <span key={idx} className="w-8 text-center text-[10px] text-gray-400 whitespace-nowrap overflow-visible">
-                            {att.timeOnly}
-                        </span>
-                    ))}
-                </div>
-            </div>
-
-            {/* Gráfico de Precisión */}
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-                <h4 className="text-center text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Precisión %</h4>
-                <div className="h-32 flex items-end justify-around border-b border-gray-200 relative mt-4">
-                    <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-0 pointer-events-none"></div>
-                    <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-1/2 pointer-events-none"></div>
-                    
-                    {lessonAttempts.map((attempt, idx) => {
-                        const pctHeight = attempt.precision; 
-                        return (
-                            <div key={attempt.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
-                                <span className="absolute -top-8 bg-gray-800 text-white text-[11px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-md pointer-events-none">
-                                    {Math.round(attempt.precision)}%
-                                </span>
-                                <div className="absolute w-full h-full flex flex-col justify-end items-center pointer-events-none">
-                                    <div style={{ bottom: `${pctHeight}%` }} className="absolute w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow transform translate-y-1/2"></div>
-                                    <div style={{ height: `${pctHeight}%` }} className="w-0.5 bg-blue-100"></div>
+                                    className={`w-5 h-5 rounded-full border-2 transition-all duration-300 shadow-sm flex items-center justify-center ${
+                                        isActive 
+                                            ? 'bg-blue-600 border-white scale-125 ring-4 ring-blue-50' 
+                                            : 'bg-white border-slate-300 hover:border-slate-500'
+                                    }`}
+                                >
+                                    <span className={`text-[8px] font-bold ${isActive ? 'text-white' : 'text-slate-400'}`}>
+                                        {idx + 1}
+                                    </span>
+                                </div>
+                                
+                                {/* Tooltip */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-slate-900 text-white text-[10px] py-2 px-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 shadow-lg whitespace-nowrap z-30 flex flex-col items-center">
+                                    <span className="font-semibold text-yellow-400">{att.timestamp}</span>
+                                    <span className="mt-1 text-gray-200">{att.wpm} PPM | {att.precision}% Precisión</span>
+                                    <span className="text-[8px] text-gray-400 mt-1 font-normal">Clic para ajustar el filtro</span>
+                                    <div className="w-2 h-2 bg-slate-900 rotate-45 absolute top-full -translate-y-1 left-1/2 -translate-x-1/2"></div>
                                 </div>
                             </div>
                         );
                     })}
                 </div>
-                <div className="flex justify-around mt-2">
-                    {lessonAttempts.map((att, idx) => (
-                        <span key={idx} className="w-8 text-center text-[10px] text-gray-400 whitespace-nowrap overflow-visible">
-                            {att.timeOnly}
-                        </span>
-                    ))}
+                
+                {/* Controls for fine-tuning range */}
+                <div className="flex flex-wrap items-center justify-between gap-4 text-xs font-semibold text-gray-600">
+                    <div className="flex items-center space-x-2">
+                        <span>Desde:</span>
+                        <select 
+                            value={startIndex} 
+                            onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setStartIndex(val);
+                                if (val > endIndex) setEndIndex(val);
+                            }}
+                            className="border border-slate-200 rounded p-1.5 bg-white text-gray-700 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm cursor-pointer"
+                        >
+                            {allAttempts.map((att, idx) => (
+                                <option key={idx} value={idx}>{idx + 1} - {att.timestamp} ({att.wpm} PPM)</option>
+                            ))}
+                        </select>
+                    </div>
+                    
+                    <div className="text-slate-500 font-bold text-center bg-slate-50 px-3 py-1 rounded-full border border-slate-100 shadow-inner">
+                        Visualizando {filteredAttempts.length} de {allAttempts.length} intentos de esta práctica
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                        <span>Hasta:</span>
+                        <select 
+                            value={endIndex} 
+                            onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setEndIndex(val);
+                                if (val < startIndex) setStartIndex(val);
+                            }}
+                            className="border border-slate-200 rounded p-1.5 bg-white text-gray-700 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm cursor-pointer"
+                        >
+                            {allAttempts.map((att, idx) => (
+                                <option key={idx} value={idx} disabled={idx < startIndex}>{idx + 1} - {att.timestamp} ({att.wpm} PPM)</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {/* Gráficos de Evolución */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                {/* Gráfico de Velocidad */}
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+                    <h4 className="text-center text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Velocidad PPM</h4>
+                    <div className="h-36 flex items-end justify-around border-b border-gray-200 relative mt-6 px-2">
+                        <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-0 pointer-events-none"></div>
+                        <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-1/2 pointer-events-none"></div>
+                        
+                        {filteredAttempts.map((attempt, idx) => {
+                            const pctHeight = Math.max(5, (attempt.wpm / maxWpm) * 100);
+                            return (
+                                <div key={attempt.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
+                                    {/* Label superior - siempre visible */}
+                                    <span 
+                                        style={{ bottom: `calc(${pctHeight}% + 4px)` }}
+                                        className="absolute text-[10px] font-bold text-slate-700 whitespace-nowrap bg-white/80 px-1 rounded shadow-sm border border-slate-100/50"
+                                    >
+                                        {Math.round(attempt.wpm)}
+                                    </span>
+                                    <div 
+                                        style={{ height: `${pctHeight}%` }} 
+                                        className="w-full bg-[#3e5c76] rounded-t hover:bg-blue-600 transition-all duration-500 shadow-sm"
+                                        title={`${attempt.timestamp}: ${attempt.wpm} PPM`}
+                                    ></div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="flex justify-around mt-2 px-2">
+                        {filteredAttempts.map((att, idx) => (
+                            <span key={idx} className="w-8 text-center text-[9px] text-gray-400 whitespace-nowrap overflow-visible leading-tight">
+                                {att.timeOnly}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Gráfico de Precisión */}
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+                    <h4 className="text-center text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Precisión %</h4>
+                    <div className="h-36 flex items-end justify-around border-b border-gray-200 relative mt-6 px-2">
+                        <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-0 pointer-events-none"></div>
+                        <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-1/2 pointer-events-none"></div>
+                        
+                        {filteredAttempts.map((attempt, idx) => {
+                            const pctHeight = attempt.precision; 
+                            return (
+                                <div key={attempt.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
+                                    {/* Label superior - siempre visible */}
+                                    <span 
+                                        style={{ bottom: `calc(${pctHeight}% + 8px)` }}
+                                        className="absolute text-[10px] font-bold text-slate-700 whitespace-nowrap bg-white/80 px-1 rounded shadow-sm border border-slate-100/50 transform -translate-y-1/2"
+                                    >
+                                        {Math.round(attempt.precision)}%
+                                    </span>
+                                    <div className="absolute w-full h-full flex flex-col justify-end items-center pointer-events-none">
+                                        <div style={{ bottom: `${pctHeight}%` }} className="absolute w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow transform translate-y-1/2"></div>
+                                        <div style={{ height: `${pctHeight}%` }} className="w-0.5 bg-blue-100"></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="flex justify-around mt-2 px-2">
+                        {filteredAttempts.map((att, idx) => (
+                            <span key={idx} className="w-8 text-center text-[9px] text-gray-400 whitespace-nowrap overflow-visible leading-tight">
+                                {att.timeOnly}
+                            </span>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>
@@ -1040,12 +1176,16 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                                         <th className="pb-3 text-center">Puntuación</th>
                                         <th className="pb-3 text-center">Velocidad</th>
                                         <th className="pb-3 text-center">Precisión</th>
+                                        <th className="pb-3 text-center">Escritas</th>
+                                        <th className="pb-3 text-center">Acertadas</th>
+                                        <th className="pb-3 text-center">Erradas</th>
                                         <th className="pb-3 text-center">Duración</th>
                                         <th className="pb-3 text-center">Ver</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {lessonAttempts.map((att, index) => {
+                                        const totalWritten = (att.correctChars ?? 0) + (att.errorChars ?? 0);
                                         return (
                                             <tr key={att.id || index} className="text-gray-700 hover:bg-gray-50/50">
                                                 <td className="py-3 font-medium text-gray-500">{att.timestamp}</td>
@@ -1061,6 +1201,9 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                                                 </td>
                                                 <td className="py-3 text-center font-semibold text-gray-900">{Math.round(att.wpm)} ppm</td>
                                                 <td className="py-3 text-center font-medium text-green-600">{Math.round(att.precision)}%</td>
+                                                <td className="py-3 text-center font-semibold text-slate-700">{totalWritten}</td>
+                                                <td className="py-3 text-center font-semibold text-green-600">{att.correctChars ?? 0}</td>
+                                                <td className="py-3 text-center font-semibold text-red-500">{att.errorChars ?? 0}</td>
                                                 <td className="py-3 text-center font-mono text-gray-600">{formatDur(att.duration)}</td>
                                                 <td className="py-3 text-center">
                                                     <button onClick={() => onPlayReplay(att)} className="text-blue-500 hover:text-blue-700">
@@ -1189,9 +1332,9 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         setPhase('typing');
     };
 
-    // Filtrar intentos previos solo de la lección seleccionada
+    // Filtrar intentos previos solo de la lección seleccionada (más reciente a más antiguo)
     const currentLessonAttempts = useMemo(() => {
-        return history.filter(item => item.lessonId === lessonId);
+        return [...history].filter(item => item.lessonId === lessonId).reverse();
     }, [history, lessonId]);
 
     const handlePlayReplay = (attempt) => {
