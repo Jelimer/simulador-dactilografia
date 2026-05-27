@@ -1,3 +1,332 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ==========================================================================
+   SISTEMA DE DISEÑO PREMIUM OSCURO - OVERRIDES DE ALTA ESPECIFICIDAD
+   ========================================================================== */
+
+/* Fondo general premium con gradiente radial y auras de neón */
+.bg-premium-dark {
+  background-color: #060913 !important;
+  background-image: 
+      radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.04) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.05) 0%, transparent 45%) !important;
+  color: #f8fafc !important;
+}
+
+/* Tipografía de títulos */
+.premium-redesign h1, 
+.premium-redesign h2, 
+.premium-redesign h3, 
+.premium-redesign h4 {
+  font-family: 'Outfit', sans-serif !important;
+}
+
+/* Tarjetas con Efecto Glassmorphism */
+.premium-redesign .bg-white {
+  background-color: rgba(15, 22, 42, 0.65) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5) !important;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.premium-redesign .bg-white:hover {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Overrides de color de texto para asegurar excelente legibilidad en fondo oscuro */
+.premium-redesign .text-gray-800, 
+.premium-redesign .text-slate-800, 
+.premium-redesign .text-gray-700, 
+.premium-redesign .text-slate-700,
+.premium-redesign .text-gray-900,
+.premium-redesign .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+.premium-redesign .text-gray-500, 
+.premium-redesign .text-slate-500, 
+.premium-redesign .text-gray-400, 
+.premium-redesign .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+.premium-redesign .text-gray-600, 
+.premium-redesign .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+/* Bloques de fondo gris/neutro claro pasan a gris azulado oscuro traslúcido */
+.premium-redesign .bg-slate-50,
+.premium-redesign .bg-slate-100,
+.premium-redesign .bg-gray-50,
+.premium-redesign .bg-gray-100 {
+  background-color: rgba(10, 15, 30, 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Sobrescribir botones e indicaciones de color azul oscuro judicial (#002B5C y #001f40) */
+.premium-redesign .bg-\[\#002B5C\] {
+  background: linear-gradient(135deg, #0284c7 0%, #3b82f6 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.3) !important;
+}
+
+.premium-redesign .bg-\[\#002B5C\]:hover {
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%) !important;
+  box-shadow: 0 6px 20px 0 rgba(59, 130, 246, 0.5) !important;
+}
+
+.premium-redesign .text-\[\#002B5C\] {
+  color: #38bdf8 !important;
+}
+
+.premium-redesign .border-\[\#002B5C\] {
+  border-color: #0284c7 !important;
+}
+
+.premium-redesign .bg-\[\#001f40\] {
+  background: rgba(10, 15, 30, 0.8) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* UserBar y notificaciones secundarias */
+.premium-redesign .bg-\[\#e6f0fa\] {
+  background-color: rgba(2, 132, 199, 0.1) !important;
+  border-color: rgba(2, 132, 199, 0.25) !important;
+  color: #7dd3fc !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.premium-redesign .text-blue-600 {
+  color: #38bdf8 !important;
+}
+
+/* Inputs, Selects y Elementos de formulario */
+.premium-redesign select,
+.premium-redesign input[type="number"],
+.premium-redesign input[type="text"] {
+  background-color: rgba(5, 7, 15, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease !important;
+}
+
+.premium-redesign select:focus,
+.premium-redesign input[type="number"]:focus,
+.premium-redesign input[type="text"]:focus {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.3) !important;
+  outline: none !important;
+}
+
+/* Historial de Intentos y Tablas */
+.premium-redesign table th {
+  color: #94a3b8 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.premium-redesign table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+.premium-redesign tr:hover {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+.premium-redesign .divide-y > * + * {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* --- INTERFAZ DEL SIMULADOR ACTIVO (ESCRITURA) --- */
+
+/* El cuadro con el texto original a copiar */
+.premium-redesign .font-serif.text-gray-800 {
+  background-color: rgba(5, 7, 15, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #e2e8f0 !important;
+  font-family: 'Inter', monospace !important;
+  font-size: 1.25rem !important;
+  line-height: 1.8 !important;
+  border-radius: 12px !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Textarea donde escribe el usuario */
+.premium-redesign textarea {
+  background-color: rgba(5, 7, 15, 0.6) !important;
+  border: 2px solid rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  font-family: 'Inter', monospace !important;
+  font-size: 1.25rem !important;
+  line-height: 1.8 !important;
+  border-radius: 12px !important;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.4) !important;
+  transition: all 0.3s ease !important;
+}
+
+.premium-redesign textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.25), inset 0 2px 6px rgba(0,0,0,0.4) !important;
+  outline: none !important;
+}
+
+/* Caracteres en el módulo de entrenamiento */
+.premium-redesign .font-mono.text-2xl {
+  background-color: rgba(5, 7, 15, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #cbd5e1 !important;
+  border-radius: 12px !important;
+  font-family: 'Inter', monospace !important;
+  font-size: 1.5rem !important;
+}
+
+/* --- TECLADO VIRTUAL OSCURO --- */
+.premium-redesign .bg-gray-200 {
+  background-color: rgba(15, 22, 42, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Teclas individuales */
+.premium-redesign .bg-gray-200 .bg-white {
+  background-color: rgba(30, 41, 59, 0.7) !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-bottom-width: 4px !important;
+}
+
+.premium-redesign .bg-gray-200 .bg-white:hover {
+  background-color: rgba(30, 41, 59, 0.9) !important;
+}
+
+/* Teclas asignadas a dedos (estilo TypingClub) en modo oscuro traslúcido */
+.premium-redesign .bg-blue-50 {
+  background-color: rgba(6, 182, 212, 0.12) !important;
+  color: #22d3ee !important;
+  border-color: rgba(6, 182, 212, 0.25) !important;
+  border-bottom-color: rgba(6, 182, 212, 0.45) !important;
+}
+
+.premium-redesign .bg-green-50 {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+  border-bottom-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+.premium-redesign .bg-yellow-50 {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.25) !important;
+  border-bottom-color: rgba(245, 158, 11, 0.45) !important;
+}
+
+.premium-redesign .bg-purple-50 {
+  background-color: rgba(168, 85, 247, 0.12) !important;
+  color: #c084fc !important;
+  border-color: rgba(168, 85, 247, 0.25) !important;
+  border-bottom-color: rgba(168, 85, 247, 0.45) !important;
+}
+
+/* Barra espaciadora */
+.premium-redesign .bg-gray-100 {
+  background-color: rgba(30, 41, 59, 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Tecla esperada (activa) - brilla en azul neón */
+.premium-redesign .bg-blue-600 {
+  background: linear-gradient(135deg, #0284c7 0%, #3b82f6 100%) !important;
+  color: #ffffff !important;
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.6) !important;
+}
+
+/* --- GUÍA DE MANOS Y DEDOS --- */
+.premium-redesign .bg-gray-300 {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* --- GRÁFICOS E HISTORIAL --- */
+.premium-redesign .bg-slate-50.border.border-slate-100 {
+  background-color: rgba(5, 7, 15, 0.4) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.premium-redesign .bg-slate-200 {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Barras del gráfico */
+.premium-redesign .bg-\[\#3e5c76\] {
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 4px 10px rgba(29, 78, 216, 0.2) !important;
+}
+
+.premium-redesign .bg-\[\#3e5c76\]:hover {
+  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%) !important;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Cajas de métricas de resultados */
+.premium-redesign .bg-slate-50.p-4.rounded-lg.border {
+  background-color: rgba(15, 22, 42, 0.4) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Reproductor de Audio Teórico */
+.premium-redesign .bg-gradient-to-r.from-\[\#001f40\] {
+  background: linear-gradient(135deg, rgba(15, 22, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Header de la plataforma */
+.premium-redesign header {
+  background-color: rgba(10, 15, 30, 0.75) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Pestañas de navegación activas/inactivas */
+.premium-redesign nav button {
+  border-bottom-width: 3px !important;
+  transition: all 0.3s ease !important;
+}
+
+.premium-redesign nav button:hover {
+  color: #38bdf8 !important;
+}
+
+.premium-redesign nav button.text-\[\#002B5C\] {
+  color: #38bdf8 !important;
+  border-color: #38bdf8 !important;
+}
+
+/* --- ANIMACIONES DE PULSO Y TRANSICIONES --- */
+.premium-redesign .animate-pulse {
+  animation: pulseNeon 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+@keyframes pulseNeon {
+  0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+  }
+  50% {
+      opacity: .8;
+      box-shadow: 0 0 4px rgba(59, 130, 246, 0.2);
+  }
+}

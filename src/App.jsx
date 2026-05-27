@@ -2790,7 +2790,7 @@ export default function App() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 text-gray-800 font-sans antialiased">
+        <div className="min-h-screen bg-premium-dark text-slate-100 font-sans antialiased premium-redesign">
             <Header activeTab={activeTab} setActiveTab={setActiveTab} />
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <UserBar />
