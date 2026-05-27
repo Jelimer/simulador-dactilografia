@@ -3,7 +3,7 @@ import {
     Play, RotateCcw, CheckCircle, Clock, User, BookOpen, Settings,
     Star, Volume2, VolumeX, Award, ArrowLeft, History, Eye, Trash,
     Search, Coffee, Keyboard, HelpCircle, Bold, Italic, Underline,
-    AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter, Save, FileText
+    AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter, Save, FileText, Sun, Moon
 } from 'lucide-react';
 
 // ==========================================
@@ -265,7 +265,7 @@ const getFingerForKey = (char) => {
 // ==========================================
 // 3. COMPONENTES COMPARTIDOS
 // ==========================================
-const Header = ({ activeTab, setActiveTab }) => (
+const Header = ({ activeTab, setActiveTab, theme, setTheme }) => (
     <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16 items-center">
@@ -279,23 +279,33 @@ const Header = ({ activeTab, setActiveTab }) => (
                         <div className="text-xl font-black text-[#002B5C] leading-none">PODER JUDICIAL</div>
                     </div>
                 </div>
-                <nav className="hidden md:flex space-x-8">
+                <div className="flex items-center space-x-4">
+                    <nav className="hidden md:flex space-x-8">
+                        <button 
+                            onClick={() => setActiveTab('simulador')}
+                            className={`font-semibold px-1 py-5 border-b-2 transition-colors ${activeTab === 'simulador' ? 'text-[#002B5C] border-[#002B5C]' : 'text-gray-400 border-transparent hover:text-[#002B5C]'}`}>
+                            Simulador Judicial
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('entrenamiento')}
+                            className={`font-semibold px-1 py-5 border-b-2 transition-colors flex items-center ${activeTab === 'entrenamiento' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-blue-600'}`}>
+                            <Star className="w-4 h-4 mr-1" fill="currentColor"/> Entrenamiento de Dedos
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('teoria')}
+                            className={`font-semibold px-1 py-5 border-b-2 transition-colors flex items-center ${activeTab === 'teoria' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-blue-600'}`}>
+                            <Award className="w-4 h-4 mr-1"/> Preparación Teórica
+                        </button>
+                    </nav>
+                    
                     <button 
-                        onClick={() => setActiveTab('simulador')}
-                        className={`font-semibold px-1 py-5 border-b-2 transition-colors ${activeTab === 'simulador' ? 'text-[#002B5C] border-[#002B5C]' : 'text-gray-400 border-transparent hover:text-[#002B5C]'}`}>
-                        Simulador Judicial
+                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                        className="p-2.5 rounded-full border border-gray-200 hover:bg-gray-100 hover:text-gray-900 transition-colors flex items-center justify-center text-gray-500 shadow-sm cursor-pointer"
+                        title={theme === 'dark' ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
+                    >
+                        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                     </button>
-                    <button 
-                        onClick={() => setActiveTab('entrenamiento')}
-                        className={`font-semibold px-1 py-5 border-b-2 transition-colors flex items-center ${activeTab === 'entrenamiento' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-blue-600'}`}>
-                        <Star className="w-4 h-4 mr-1" fill="currentColor"/> Entrenamiento de Dedos
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('teoria')}
-                        className={`font-semibold px-1 py-5 border-b-2 transition-colors flex items-center ${activeTab === 'teoria' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-blue-600'}`}>
-                        <Award className="w-4 h-4 mr-1"/> Preparación Teórica
-                    </button>
-                </nav>
+                </div>
             </div>
         </div>
         <div className="bg-[#001f40] text-white text-center py-2 text-sm font-medium tracking-wide">
@@ -2770,6 +2780,13 @@ const PreparacionTeorica = () => {
 // ==========================================
 export default function App() {
     const [activeTab, setActiveTab] = useState('simulador');
+    const [theme, setTheme] = useState(() => {
+        try {
+            return localStorage.getItem('dactilografia_theme') || 'dark';
+        } catch (e) {
+            return 'dark';
+        }
+    });
     const [history, setHistory] = useState(() => {
         try {
             const saved = localStorage.getItem('dactilografia_historial');
@@ -2778,6 +2795,12 @@ export default function App() {
             return [];
         }
     });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('dactilografia_theme', theme);
+        } catch (e) {}
+    }, [theme]);
 
     useEffect(() => {
         try {
@@ -2790,8 +2813,8 @@ export default function App() {
     };
 
     return (
-        <div className="min-h-screen bg-premium-dark text-slate-100 font-sans antialiased premium-redesign">
-            <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+        <div className={`min-h-screen font-sans antialiased ${theme === 'dark' ? 'bg-premium-dark text-slate-100 premium-redesign' : 'bg-slate-50 text-gray-800 pb-12'}`}>
+            <Header activeTab={activeTab} setActiveTab={setActiveTab} theme={theme} setTheme={setTheme} />
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <UserBar />
                 {activeTab === 'simulador' && <Simulador />}
