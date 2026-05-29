@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
-    Play, RotateCcw, CheckCircle, Clock, User, BookOpen, Settings,
+    Play, RotateCcw, CheckCircle, Clock, User, Users, BookOpen, Settings,
     Star, Volume2, VolumeX, Award, ArrowLeft, History, Eye, Trash,
     Search, Coffee, Keyboard, HelpCircle, Bold, Italic, Underline,
     AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter, Save, FileText, Sun, Moon
@@ -52,6 +52,83 @@ const playTypingSound = (isCorrect, isMuted) => {
     } catch (e) {
         // Silencioso si el navegador bloquea AudioContext temporalmente
     }
+};
+
+// ==========================================
+// AMBIENT TYPING SOUND - Simula otras personas escribiendo en la sala
+// ==========================================
+const createAmbientTyping = () => {
+    let ctx = null;
+    let timeouts = [];
+    let running = false;
+
+    const playClick = () => {
+        if (!running || !ctx || ctx.state === 'closed') return;
+        try {
+            const bufferSize = Math.floor(ctx.sampleRate * 0.025);
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.12));
+            }
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.playbackRate.value = 0.7 + Math.random() * 0.8;
+
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 1800 + Math.random() * 3500;
+            filter.Q.value = 0.4 + Math.random() * 1.2;
+
+            const gain = ctx.createGain();
+            gain.gain.value = 0.006 + Math.random() * 0.014;
+
+            source.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+            source.start(ctx.currentTime);
+        } catch (e) {}
+    };
+
+    const scheduleTypist = (avgDelay) => {
+        const next = () => {
+            if (!running) return;
+            const delay = avgDelay * (0.4 + Math.random() * 1.2);
+            const t = setTimeout(() => {
+                if (!running) return;
+                playClick();
+                if (Math.random() > 0.55) {
+                    const burst = 1 + Math.floor(Math.random() * 3);
+                    for (let i = 0; i < burst; i++) {
+                        const bt = setTimeout(() => { if (running) playClick(); }, (i + 1) * (25 + Math.random() * 55));
+                        timeouts.push(bt);
+                    }
+                }
+                next();
+            }, delay);
+            timeouts.push(t);
+        };
+        next();
+    };
+
+    return {
+        start() {
+            if (running) return;
+            running = true;
+            ctx = new (window.AudioContext || window.webkitAudioContext)();
+            scheduleTypist(110);
+            scheduleTypist(170);
+            scheduleTypist(240);
+            scheduleTypist(320);
+        },
+        stop() {
+            running = false;
+            timeouts.forEach(t => clearTimeout(t));
+            timeouts = [];
+            if (ctx && ctx.state !== 'closed') { try { ctx.close(); } catch(e) {} }
+            ctx = null;
+        }
+    };
 };
 
 // ==========================================
@@ -152,7 +229,7 @@ const TRAINING_LESSONS = [
     { id: 19, title: 'Revisión g & h', text: 'gg hh hhgg hghg ghhhg hggh ghgg hhggghhh hhgg hghg gghhghgg hhg hhgg hghg', section: 'Fila guía' },
     { id: 20, title: 'Práctica g & h', text: 'glag glass gag had ñaha gal laña saña gaf hah haha gaga gaña faña hasha shash', section: 'Fila guía' },
     { id: 21, title: 'Revisión: Fila guía', text: 'hala hafa gafa kaja kaha laja falaha jalaka dajala jala sala kala lala saja gala gaga galaja', section: 'Fila guía' },
-    // 22: Juego Fila guía - omitido
+    { id: 22, title: 'Práctica Integral', text: 'las alas gala salsa falsa saña daña laña hala jala sala kala laja saja falaha galaja flash dash slash flask glass flags half shall falls lash gash glad ask sad dad all', section: 'Fila guía' },
 
     // Fila superior
     { id: 23, title: 'Teclas r & u', text: 'r u r u rr uu ru ur rrr uuu fr ju ru ur fr ju ru ur fr ju', section: 'Fila superior' },
@@ -1796,6 +1873,20 @@ const Entrenamiento = ({ history, onAddHistory }) => {
     const [charsWithErrors, setCharsWithErrors] = useState({});
     const [introStep, setIntroStep] = useState(1); // 1, 2, 3
     const [isHoldingRequiredKey, setIsHoldingRequiredKey] = useState(false);
+    const [ambientEnabled, setAmbientEnabled] = useState(false);
+    const ambientRef = useRef(null);
+
+    // Ambient typing sound effect
+    useEffect(() => {
+        if (phase === 'typing' && ambientEnabled) {
+            const ambient = createAmbientTyping();
+            ambientRef.current = ambient;
+            ambient.start();
+            return () => { ambient.stop(); ambientRef.current = null; };
+        } else {
+            if (ambientRef.current) { ambientRef.current.stop(); ambientRef.current = null; }
+        }
+    }, [phase, ambientEnabled]);
 
     useEffect(() => {
         const handleBlur = () => {
@@ -2226,6 +2317,18 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     <div className="flex justify-between w-full mb-6 text-gray-500 font-bold uppercase tracking-wider text-xs border-b pb-4">
                         <span className="text-blue-700">Lección {lesson.id}: {lesson.title}</span>
                         <div className="flex items-center space-x-4">
+                            <button 
+                                onClick={() => setAmbientEnabled(!ambientEnabled)}
+                                className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
+                                    ambientEnabled 
+                                        ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' 
+                                        : 'text-gray-400 hover:text-gray-600 border border-transparent'
+                                }`}
+                                title={ambientEnabled ? 'Desactivar ruido ambiental' : 'Activar ruido ambiental (simula sala de examen)'}
+                            >
+                                <Users className="w-3.5 h-3.5" />
+                                {ambientEnabled ? 'Sala ON' : 'Sala'}
+                            </button>
                             <button 
                                 onClick={() => setSoundMuted(!soundMuted)}
                                 className="text-gray-400 hover:text-gray-700"
