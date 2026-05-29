@@ -146,8 +146,8 @@ const TRAINING_LESSONS = [
     { id: 13, title: 'Revisión a & ñ', text: 'aa ññ ññaa ñaña aññña ñaañ añaa ññaaaññ ññaa ñaña aaññañaa ñña ññaa ñaña', section: 'Fila guía' },
     { id: 14, title: 'Primeras 8 teclas', text: 'las alas las ñañas lasas kasas fasas fañas kañas dañas laña saña salsa falsa kala sañas', section: 'Fila guía' },
     // 15: Juego Las primeras 8 - omitido
-    { id: 16, title: 'Fila guía: Izquierda', text: 'a s d f g asdfg asdfg asdf asdf a s d f a s d f g asdfg asdfg', section: 'Fila guía' },
-    { id: 17, title: 'Fila guía: Derecha', text: 'j k l ñ h jklñh jklñh jklñ jklñ j k l ñ j k l ñ h jklñh jklñh', section: 'Fila guía' },
+    { id: 16, title: 'Fila guía: Izquierda', text: 'dad dada ad ada adad sad sada dasad fas fasd dada affa fada fasa saf fdds asdf', section: 'Fila guía' },
+    { id: 17, title: 'Fila guía: Derecha', text: 'jk jk ññjl jlkj ñjk lkjj jjññ lkjj lkjj lkñjñ jklñ jjkk lkj jjkk lkjj ñkñj jjñj jl jk kj klj lkj kñj', section: 'Fila guía' },
     { id: 18, title: 'Teclas g & h', text: 'f g f g j h j h fg jh g f h j g h g h fgh jhk g h g h fg jh', section: 'Fila guía' },
     { id: 19, title: 'Revisión: g & h', text: 'f g f g j h j h fg jh g f h j g h g h fgh jhk g h g h fg jh', section: 'Fila guía' },
     { id: 20, title: 'Práctica: g & h', text: 'a s d f g ñ l k j h asdfg ñlkjh g f d s a h j k l ñ gh gh', section: 'Fila guía' },
@@ -1526,6 +1526,141 @@ const HandsKeyboardIntro = ({ step, lessonId }) => {
     );
 };
 
+const HoldKeyOverlay = ({ requiredKey }) => {
+    const isJ = requiredKey === 'j';
+    const isF = requiredKey === 'f';
+
+    const row1 = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'];
+    const row2 = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ñ'];
+    const row3 = ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '-'];
+
+    const getKeyCoords = (char) => {
+        const c = char.toLowerCase();
+        let idx = row1.indexOf(c);
+        if (idx !== -1) return { x: 100 + idx * 56, y: 50 };
+        idx = row2.indexOf(c);
+        if (idx !== -1) return { x: 120 + idx * 56, y: 106 };
+        idx = row3.indexOf(c);
+        if (idx !== -1) return { x: 140 + idx * 56, y: 162 };
+        if (c === ' ') return { x: 260, y: 218, w: 240, h: 48 };
+        return null;
+    };
+
+    const renderKey = (char) => {
+        const coords = getKeyCoords(char);
+        if (!coords) return null;
+
+        const isTarget = char === requiredKey;
+
+        return (
+            <g key={char}>
+                <rect 
+                    x={coords.x} 
+                    y={coords.y} 
+                    width={48} 
+                    height={48} 
+                    rx={8} 
+                    className={`transition-colors duration-300 ${
+                        isTarget 
+                            ? 'fill-orange-500 stroke-orange-600 stroke-2' 
+                            : 'fill-slate-800 stroke-slate-700'
+                    }`}
+                />
+                <text 
+                    x={coords.x + 24} 
+                    y={coords.y + 29} 
+                    textAnchor="middle" 
+                    className={`font-sans font-bold text-base select-none uppercase ${
+                        isTarget ? 'fill-white' : 'fill-slate-400'
+                    }`}
+                >
+                    {char}
+                </text>
+            </g>
+        );
+    };
+
+    return (
+        <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-8 rounded-xl transition-all duration-300">
+            <h2 className="text-3xl font-bold text-white text-center mb-8 flex items-center gap-3">
+                Mantén presionada la tecla 
+                <span className="inline-flex items-center justify-center w-12 h-12 bg-white text-slate-900 font-bold rounded-xl shadow-lg text-xl select-none border-b-4 border-slate-300">
+                    {requiredKey}
+                </span> 
+                mientras escribes esta lección.
+            </h2>
+            
+            <div className="w-full max-w-2xl bg-slate-900/40 p-6 rounded-2xl border border-slate-850 shadow-2xl relative">
+                <svg viewBox="0 0 800 480" className="w-full h-auto">
+                    {/* Keyboard Background Panel */}
+                    <rect x={70} y={30} width={660} height={252} rx={16} fill="#1e293b" stroke="#334155" strokeWidth={2} />
+
+                    {/* Row 1 Keys */}
+                    {row1.map(renderKey)}
+
+                    {/* Row 2 Keys */}
+                    {row2.map(renderKey)}
+
+                    {/* Row 3 Keys */}
+                    {row3.map(renderKey)}
+
+                    {/* Space Bar Key */}
+                    <rect 
+                        x={260} 
+                        y={218} 
+                        width={240} 
+                        height={48} 
+                        rx={8} 
+                        className="fill-slate-800 stroke-slate-700"
+                    />
+
+                    {/* Left Hand Outline */}
+                    <path 
+                        d="M100,480 C110,400 120,330 135,310 C130,270 135,225 142,210 C146,200 152,200 154,210 C160,240 165,280 170,300 C175,260 185,210 195,195 C200,185 208,185 210,195 C215,230 220,275 225,295 C230,250 240,200 252,190 C258,180 266,180 268,190 C273,230 276,270 278,290 C285,240 295,200 308,195 C314,188 322,188 324,195 C328,225 320,270 310,310 C320,310 330,290 342,275 C348,268 355,272 355,280 C350,300 330,340 300,380 C270,410 260,450 250,480"
+                        fill="none" 
+                        stroke={isF ? '#ffffff' : '#475569'} 
+                        strokeWidth={isF ? 2.5 : 1.5} 
+                        strokeLinejoin="round"
+                        className={isF ? '' : 'opacity-30'}
+                    />
+                    
+                    {/* Right Hand Outline */}
+                    <path 
+                        d="M700,480 C690,400 680,330 665,310 C670,270 665,225 658,210 C654,200 648,200 646,210 C640,240 635,280 630,300 C625,260 615,210 605,195 C600,185 592,185 590,195 C585,230 580,275 575,295 C570,250 560,200 548,190 C542,180 534,180 532,190 C527,230 524,270 522,290 C515,240 505,200 492,195 C486,188 478,188 476,195 C472,225 480,270 490,310 C480,310 470,290 458,275 C452,268 445,272 445,280 C450,300 470,340 500,380 C530,410 540,450 550,480"
+                        fill="none" 
+                        stroke={isJ ? '#ffffff' : '#475569'} 
+                        strokeWidth={isJ ? 2.5 : 1.5} 
+                        strokeLinejoin="round"
+                        className={isJ ? '' : 'opacity-30'}
+                    />
+
+                    {/* Highlighted index finger */}
+                    {isF && (
+                        <path 
+                            d="M278,290 C285,240 295,200 308,195 C314,188 322,188 324,195 C328,225 320,270 310,310" 
+                            fill="none" 
+                            stroke="#f97316" 
+                            strokeWidth={5} 
+                            strokeLinecap="round"
+                            style={{ filter: 'drop-shadow(0 0 8px rgba(249,115,22,0.8))' }}
+                        />
+                    )}
+                    {isJ && (
+                        <path 
+                            d="M522,290 C515,240 505,200 492,195 C486,188 478,188 476,195 C472,225 480,270 490,310" 
+                            fill="none" 
+                            stroke="#f97316" 
+                            strokeWidth={5} 
+                            strokeLinecap="round"
+                            style={{ filter: 'drop-shadow(0 0 8px rgba(249,115,22,0.8))' }}
+                        />
+                    )}
+                </svg>
+            </div>
+        </div>
+    );
+};
+
 const Entrenamiento = ({ history, onAddHistory }) => {
     const [lessonId, setLessonId] = useState(1);
     const [phase, setPhase] = useState('menu'); // menu, typing, results, replay, intro
@@ -1539,6 +1674,17 @@ const Entrenamiento = ({ history, onAddHistory }) => {
     const [replayData, setReplayData] = useState(null);
     const [charsWithErrors, setCharsWithErrors] = useState({});
     const [introStep, setIntroStep] = useState(1); // 1, 2, 3
+    const [isHoldingRequiredKey, setIsHoldingRequiredKey] = useState(false);
+
+    useEffect(() => {
+        const handleBlur = () => {
+            if (lessonId === 16 || lessonId === 17) {
+                setIsHoldingRequiredKey(false);
+            }
+        };
+        window.addEventListener('blur', handleBlur);
+        return () => window.removeEventListener('blur', handleBlur);
+    }, [lessonId]);
 
     const lesson = TRAINING_LESSONS.find(l => l.id === lessonId);
     const containerRef = useRef(null);
@@ -1596,6 +1742,22 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         
         // Ignorar teclas modificadoras/especiales
         if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta' || e.key === 'CapsLock') return;
+
+        // hold key logic for lesson 16 & 17
+        if (lessonId === 16 || lessonId === 17) {
+            const requiredKey = lessonId === 16 ? 'j' : 'f';
+            if (e.key.toLowerCase() === requiredKey) {
+                if (!isHoldingRequiredKey) {
+                    setIsHoldingRequiredKey(true);
+                }
+                return; // don't count the anchor key as typed character
+            }
+            if (!isHoldingRequiredKey) {
+                playTypingSound(false, soundMuted);
+                return;
+            }
+        }
+
         if (e.key === ' ') e.preventDefault(); // Prevenir desplazamiento de pantalla
 
         const expectedChar = lesson.text[typedCount];
@@ -1668,12 +1830,23 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         }
     };
 
+    const handleKeyUp = (e) => {
+        if (phase !== 'typing') return;
+        if (lessonId === 16 || lessonId === 17) {
+            const requiredKey = lessonId === 16 ? 'j' : 'f';
+            if (e.key.toLowerCase() === requiredKey) {
+                setIsHoldingRequiredKey(false);
+            }
+        }
+    };
+
     const startLesson = (id) => {
         setLessonId(id);
         setTypedCount(0);
         setErrors(0);
         setStartTime(null);
         setCharsWithErrors({});
+        setIsHoldingRequiredKey(false);
         
         if (id === 2 || id === 5 || id === 9 || id === 12) {
             setIntroStep(1);
@@ -1911,8 +2084,13 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     ref={containerRef}
                     tabIndex="0"
                     onKeyDown={handleKeyDown}
-                    className="w-full focus:outline-none flex flex-col items-center py-6 px-8 transition-colors rounded-xl bg-white shadow-sm border border-gray-200"
+                    onKeyUp={handleKeyUp}
+                    className="w-full focus:outline-none flex flex-col items-center py-6 px-8 transition-colors rounded-xl bg-white shadow-sm border border-gray-200 relative"
                 >
+                    {/* Hold key overlay for Lesson 16 and 17 */}
+                    {(lessonId === 16 || lessonId === 17) && !isHoldingRequiredKey && (
+                        <HoldKeyOverlay requiredKey={lessonId === 16 ? 'j' : 'f'} />
+                    )}
                     <div className="flex justify-between w-full mb-6 text-gray-500 font-bold uppercase tracking-wider text-xs border-b pb-4">
                         <span className="text-blue-700">Lección {lesson.id}: {lesson.title}</span>
                         <div className="flex items-center space-x-4">
@@ -1944,7 +2122,13 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     </div>
 
                     <div className="text-sm text-gray-500 mb-2 font-medium">
-                        Presiona la tecla resaltada en tu teclado físico:
+                        {(lessonId === 16 || lessonId === 17) ? (
+                            <span className="text-orange-600 font-bold">
+                                ¡Mantén presionada la tecla {lessonId === 16 ? 'j' : 'f'}!
+                            </span>
+                        ) : (
+                            "Presiona la tecla resaltada en tu teclado físico:"
+                        )}
                     </div>
 
                     <KeyboardLayout expectedChar={lesson.text[typedCount]} />
