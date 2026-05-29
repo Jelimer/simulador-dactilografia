@@ -132,9 +132,9 @@ const evaluateTyping = (originalText, typedText) => {
 const TRAINING_LESSONS = [
     // Fila guía
     { id: 1, title: 'Introducción', text: 'f j f j ff jj f j f j ff jj', section: 'Fila guía' },
-    { id: 2, title: 'Teclas f & j', text: 'f j f j ff jj fj jf fff jjj f j f j ff jj fj jf fff jjj f j', section: 'Fila guía' },
-    { id: 3, title: 'Barra de espacio', text: 'f j f j ff jj fj jf fff jjj f j f j ff jj fj jf fff jjj f j', section: 'Fila guía' },
-    { id: 4, title: 'Revisión: f & j', text: 'f j j f ff jj fj jf jf fj ff jj fj jf f j j f ff jj fj jf', section: 'Fila guía' },
+    { id: 2, title: 'Teclas f & j', text: 'ffffjjjjffffjjjjffjjffjjfjjfjf', section: 'Fila guía' },
+    { id: 3, title: 'Barra de espacio', text: 'f f j j ff ff jj jj fj jf ff jj', section: 'Fila guía' },
+    { id: 4, title: 'Revisión f & j', text: 'ffff jjjj ff jj fff jjj fj fj jjf ffj fff jjj ffj jjf fjfj fffj jjjf ffjj ff jj ffff', section: 'Fila guía' },
     { id: 5, title: 'Teclas d & k', text: 'd k d k dd kk dk kd ddd kkk f d j k fd jk dk fd kj jk fd dk', section: 'Fila guía' },
     { id: 6, title: 'Revisión: d & k', text: 'f d j k fd jk dk fd kj jk fd dk d k d k dd kk dk kd ddd kkk', section: 'Fila guía' },
     { id: 7, title: 'Práctica: d & k', text: 'dd kk dd kk dk kd fd jk fd jk dd kk dk kd fd jk fd jk dd kk', section: 'Fila guía' },
@@ -1233,9 +1233,173 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
     );
 };
 
+const HandsKeyboardIntro = ({ step }) => {
+    // Keyboard row arrays
+    const row1 = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'];
+    const row2 = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ñ'];
+    const row3 = ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '-'];
+
+    // Coordinates mapping
+    const getKeyCoords = (char) => {
+        const c = char.toLowerCase();
+        let idx = row1.indexOf(c);
+        if (idx !== -1) return { x: 100 + idx * 56, y: 50 };
+        idx = row2.indexOf(c);
+        if (idx !== -1) return { x: 120 + idx * 56, y: 106 };
+        idx = row3.indexOf(c);
+        if (idx !== -1) return { x: 140 + idx * 56, y: 162 };
+        if (c === ' ') return { x: 260, y: 218, w: 240, h: 48 };
+        return null;
+    };
+
+    const renderKey = (char) => {
+        const coords = getKeyCoords(char);
+        if (!coords) return null;
+
+        const isF = char === 'f';
+        const isJ = char === 'j';
+        
+        let isHighlighted = false;
+        if (step === 1 && isF) isHighlighted = true;
+        if (step === 2 && isJ) isHighlighted = true;
+        if (step === 3 && (isF || isJ)) isHighlighted = true;
+
+        return (
+            <g key={char}>
+                <rect 
+                    x={coords.x} 
+                    y={coords.y} 
+                    width={48} 
+                    height={48} 
+                    rx={8} 
+                    className={`transition-colors duration-300 ${
+                        isHighlighted 
+                            ? 'fill-blue-600 stroke-blue-800 stroke-2' 
+                            : 'fill-white stroke-slate-300'
+                    }`}
+                    style={{ filter: isHighlighted ? 'drop-shadow(0 4px 6px rgba(37,99,235,0.3))' : '' }}
+                />
+                <text 
+                    x={coords.x + 24} 
+                    y={coords.y + 29} 
+                    textAnchor="middle" 
+                    className={`font-sans font-bold text-base select-none uppercase ${
+                        isHighlighted ? 'fill-white' : 'fill-slate-600'
+                    }`}
+                >
+                    {char}
+                </text>
+                {/* Bump on f & j keys */}
+                {(isF || isJ) && (
+                    <line 
+                        x1={coords.x + 18} 
+                        y1={coords.y + 38} 
+                        x2={coords.x + 30} 
+                        y2={coords.y + 38} 
+                        stroke={isHighlighted ? '#bfdbfe' : '#94a3b8'} 
+                        strokeWidth={2} 
+                        strokeLinecap="round"
+                    />
+                )}
+            </g>
+        );
+    };
+
+    const isSpaceHighlighted = step === 3;
+
+    return (
+        <svg viewBox="0 0 800 480" className="w-full h-auto">
+            {/* Keyboard Background Panel */}
+            <rect x={70} y={30} width={660} height={252} rx={16} fill="#f1f5f9" stroke="#e2e8f0" strokeWidth={2} />
+
+            {/* Row 1 Keys */}
+            {row1.map(renderKey)}
+
+            {/* Row 2 Keys */}
+            {row2.map(renderKey)}
+
+            {/* Row 3 Keys */}
+            {row3.map(renderKey)}
+
+            {/* Space Bar Key */}
+            <rect 
+                x={260} 
+                y={218} 
+                width={240} 
+                height={48} 
+                rx={8} 
+                className={`transition-colors duration-300 ${
+                    isSpaceHighlighted 
+                        ? 'fill-blue-600 stroke-blue-800 stroke-2' 
+                        : 'fill-white stroke-slate-300'
+                }`}
+                style={{ filter: isSpaceHighlighted ? 'drop-shadow(0 4px 6px rgba(37,99,235,0.3))' : '' }}
+            />
+            {isSpaceHighlighted && (
+                <text 
+                    x={380} 
+                    y={247} 
+                    textAnchor="middle" 
+                    className="font-sans font-bold text-xs select-none fill-white uppercase tracking-wider"
+                >
+                    espacio
+                </text>
+            )}
+
+            {/* Hands Outlines (drawn on top of keys) */}
+            
+            {/* Left Hand Outline */}
+            <path 
+                d="M100,480 C110,400 120,330 135,310 C130,270 135,225 142,210 C146,200 152,200 154,210 C160,240 165,280 170,300 C175,260 185,210 195,195 C200,185 208,185 210,195 C215,230 220,275 225,295 C230,250 240,200 252,190 C258,180 266,180 268,190 C273,230 276,270 278,290 C285,240 295,200 308,195 C314,188 322,188 324,195 C328,225 320,270 310,310 C320,310 330,290 342,275 C348,268 355,272 355,280 C350,300 330,340 300,380 C270,410 260,450 250,480"
+                fill="none" 
+                stroke="#cbd5e1" 
+                strokeWidth={2} 
+                strokeLinejoin="round"
+                className="opacity-70"
+            />
+            
+            {/* Right Hand Outline */}
+            <path 
+                d="M700,480 C690,400 680,330 665,310 C670,270 665,225 658,210 C654,200 648,200 646,210 C640,240 635,280 630,300 C625,260 615,210 605,195 C600,185 592,185 590,195 C585,230 580,275 575,295 C570,250 560,200 548,190 C542,180 534,180 532,190 C527,230 524,270 522,290 C515,240 505,200 492,195 C486,188 478,188 476,195 C472,225 480,270 490,310 C480,310 470,290 458,275 C452,268 445,272 445,280 C450,300 470,340 500,380 C530,410 540,450 550,480"
+                fill="none" 
+                stroke="#cbd5e1" 
+                strokeWidth={2} 
+                strokeLinejoin="round"
+                className="opacity-70"
+            />
+
+            {/* Interactive Highlights */}
+            
+            {/* Left Index Finger Highlight in Step 1 or 3 */}
+            {(step === 1 || step === 3) && (
+                <path 
+                    d="M278,290 C285,240 295,200 308,195 C314,188 322,188 324,195 C328,225 320,270 310,310" 
+                    fill="none" 
+                    stroke="#2563eb" 
+                    strokeWidth={4.5} 
+                    strokeLinecap="round"
+                    style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
+                />
+            )}
+
+            {/* Right Index Finger Highlight in Step 2 or 3 */}
+            {(step === 2 || step === 3) && (
+                <path 
+                    d="M522,290 C515,240 505,200 492,195 C486,188 478,188 476,195 C472,225 480,270 490,310" 
+                    fill="none" 
+                    stroke="#2563eb" 
+                    strokeWidth={4.5} 
+                    strokeLinecap="round"
+                    style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
+                />
+            )}
+        </svg>
+    );
+};
+
 const Entrenamiento = ({ history, onAddHistory }) => {
     const [lessonId, setLessonId] = useState(1);
-    const [phase, setPhase] = useState('menu'); // menu, typing, results, replay
+    const [phase, setPhase] = useState('menu'); // menu, typing, results, replay, intro
     const [soundMuted, setSoundMuted] = useState(false);
     
     // Typing state
@@ -1245,16 +1409,55 @@ const Entrenamiento = ({ history, onAddHistory }) => {
     const [metrics, setMetrics] = useState(null);
     const [replayData, setReplayData] = useState(null);
     const [charsWithErrors, setCharsWithErrors] = useState({});
+    const [introStep, setIntroStep] = useState(1); // 1, 2, 3
 
     const lesson = TRAINING_LESSONS.find(l => l.id === lessonId);
     const containerRef = useRef(null);
 
-    // Auto-focus container al iniciar la lección
+    // Auto-focus container al iniciar la lección o cambiar de paso en la intro
     useEffect(() => {
-        if (phase === 'typing' && containerRef.current) {
+        if ((phase === 'typing' || phase === 'intro') && containerRef.current) {
             containerRef.current.focus();
         }
-    }, [phase]);
+    }, [phase, introStep]);
+
+    const handleIntroKeyDown = (e) => {
+        if (phase !== 'intro') return;
+
+        // Prevent browser scrolling with space bar
+        if (e.key === ' ') e.preventDefault();
+
+        // Skip modifiers
+        if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta' || e.key === 'CapsLock') return;
+
+        if (introStep === 1) {
+            if (e.key === 'f' || e.key === 'F') {
+                playTypingSound(true, soundMuted);
+                setIntroStep(2);
+            } else {
+                playTypingSound(false, soundMuted);
+            }
+        } else if (introStep === 2) {
+            if (e.key === 'j' || e.key === 'J') {
+                playTypingSound(true, soundMuted);
+                setIntroStep(3);
+            } else {
+                playTypingSound(false, soundMuted);
+            }
+        } else if (introStep === 3) {
+            if (e.key === ' ') {
+                playTypingSound(true, soundMuted);
+                // Start typing test
+                setTypedCount(0);
+                setErrors(0);
+                setStartTime(null);
+                setCharsWithErrors({});
+                setPhase('typing');
+            } else {
+                playTypingSound(false, soundMuted);
+            }
+        }
+    };
 
     const handleKeyDown = (e) => {
         if (phase !== 'typing') return;
@@ -1339,7 +1542,13 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         setErrors(0);
         setStartTime(null);
         setCharsWithErrors({});
-        setPhase('typing');
+        
+        if (id === 2) {
+            setIntroStep(1);
+            setPhase('intro');
+        } else {
+            setPhase('typing');
+        }
     };
 
     // Filtrar intentos previos solo de la lección seleccionada (más reciente a más antiguo)
@@ -1499,6 +1708,64 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {phase === 'intro' && (
+                <div 
+                    ref={containerRef}
+                    tabIndex="0"
+                    onKeyDown={handleIntroKeyDown}
+                    className="w-full focus:outline-none flex flex-col items-center py-10 px-8 transition-colors rounded-xl bg-white shadow-sm border border-gray-200"
+                >
+                    {/* Header */}
+                    <div className="flex justify-between w-full mb-8 text-gray-500 font-bold uppercase tracking-wider text-xs border-b pb-4">
+                        <span className="text-blue-700">Introducción de nuevas teclas {introStep === 3 ? '/ Bien hecho' : ''}</span>
+                        <div className="flex items-center space-x-4">
+                            <button 
+                                onClick={() => setSoundMuted(!soundMuted)}
+                                className="text-gray-400 hover:text-gray-700"
+                            >
+                                {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                            </button>
+                            <button onClick={() => setPhase('menu')} className="hover:text-red-500 font-semibold">Abandonar</button>
+                        </div>
+                    </div>
+
+                    {/* Step descriptions */}
+                    <div className="text-center max-w-2xl mx-auto mb-8 min-h-[90px] flex flex-col justify-center items-center">
+                        {introStep === 1 && (
+                            <h3 className="text-2xl font-semibold text-gray-700 leading-relaxed flex items-center flex-wrap justify-center gap-2">
+                                Escribe la tecla 
+                                <span className="inline-flex items-center justify-center w-10 h-10 bg-blue-600 text-white font-bold rounded-lg shadow-md border-b-4 border-blue-800 text-lg select-none">f</span> 
+                                con tu dedo índice izquierdo.
+                            </h3>
+                        )}
+                        {introStep === 2 && (
+                            <h3 className="text-2xl font-semibold text-gray-700 leading-relaxed flex items-center flex-wrap justify-center gap-2">
+                                Escribe la tecla 
+                                <span className="inline-flex items-center justify-center w-10 h-10 bg-blue-600 text-white font-bold rounded-lg shadow-md border-b-4 border-blue-800 text-lg select-none">j</span> 
+                                con tu dedo índice derecho.
+                            </h3>
+                        )}
+                        {introStep === 3 && (
+                            <div className="space-y-4">
+                                <h3 className="text-xl font-medium text-gray-600 leading-relaxed max-w-lg mx-auto">
+                                    Ahora vamos a practicar tecleando las teclas <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded border-b-2 border-blue-800 text-xs shadow-sm">f</span> y <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded border-b-2 border-blue-800 text-xs shadow-sm">j</span>. ¡Tómate tu tiempo y asegúrate de hacerlo lo mejor que puedas!
+                                </h3>
+                                <p className="text-2xl font-bold text-slate-800 mt-4 flex items-center justify-center gap-2">
+                                    Presiona 
+                                    <span className="inline-flex items-center justify-center px-4 h-9 bg-blue-600 text-white font-bold rounded-lg shadow-md border-b-4 border-blue-800 text-sm select-none">espacio</span> 
+                                    para empezar.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* SVG Graphic with keyboard & hands */}
+                    <div className="w-full max-w-3xl mx-auto bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner relative flex justify-center items-center">
+                        <HandsKeyboardIntro step={introStep} />
                     </div>
                 </div>
             )}
