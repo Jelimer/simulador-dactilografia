@@ -151,7 +151,7 @@ const TRAINING_LESSONS = [
     { id: 18, title: 'Teclas g & h', text: 'gggghhhhgggghhhhgghhgghhghghhgh', section: 'Fila guía' },
     { id: 19, title: 'Revisión g & h', text: 'gg hh hhgg hghg ghhhg hggh ghgg hhggghhh hhgg hghg gghhghgg hhg hhgg hghg', section: 'Fila guía' },
     { id: 20, title: 'Práctica g & h', text: 'glag glass gag had ñaha gal laña saña gaf hah haha gaga gaña faña hasha shash', section: 'Fila guía' },
-    { id: 21, title: 'Revisión: Fila guía', text: 'a s d f g h j k l ñ asdfg hjklñ asdfg hjklñ a s d f g h j k l ñ', section: 'Fila guía' },
+    { id: 21, title: 'Revisión: Fila guía', text: 'hala hafa gafa kaja kaha laja falaha jalaka dajala jala sala kala lala saja gala gaga galaja', section: 'Fila guía' },
     // 22: Juego Fila guía - omitido
 
     // Fila superior
