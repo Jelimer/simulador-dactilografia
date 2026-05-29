@@ -135,8 +135,8 @@ const TRAINING_LESSONS = [
     { id: 2, title: 'Teclas f & j', text: 'ffffjjjjffffjjjjffjjffjjfjjfjf', section: 'Fila guía' },
     { id: 3, title: 'Barra de espacio', text: 'f f j j ff ff jj jj fj jf ff jj', section: 'Fila guía' },
     { id: 4, title: 'Revisión f & j', text: 'ffff jjjj ff jj fff jjj fj fj jjf ffj fff jjj ffj jjf fjfj fffj jjjf ffjj ff jj ffff', section: 'Fila guía' },
-    { id: 5, title: 'Teclas d & k', text: 'd k d k dd kk dk kd ddd kkk f d j k fd jk dk fd kj jk fd dk', section: 'Fila guía' },
-    { id: 6, title: 'Revisión: d & k', text: 'f d j k fd jk dk fd kj jk fd dk d k d k dd kk dk kd ddd kkk', section: 'Fila guía' },
+    { id: 5, title: 'Teclas d & k', text: 'ddddkkkkddddkkkkddkkddkkdkdkkdkd', section: 'Fila guía' },
+    { id: 6, title: 'Revisión d & k', text: 'dd kk dk dk kd kd ddd kkd ddk dkk kkdd ddkk dddd kkkk ddkk kkdd kdd kddd dk kk', section: 'Fila guía' },
     { id: 7, title: 'Práctica: d & k', text: 'dd kk dd kk dk kd fd jk fd jk dd kk dk kd fd jk fd jk dd kk', section: 'Fila guía' },
     // 8: Juego fjdk - omitido
     { id: 9, title: 'Teclas s & l', text: 's l s l ss ll sl ls sss lll d s k l ds kl sl ls ds lk sk dl', section: 'Fila guía' },
@@ -1233,7 +1233,7 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
     );
 };
 
-const HandsKeyboardIntro = ({ step }) => {
+const HandsKeyboardIntro = ({ step, lessonId }) => {
     // Keyboard row arrays
     const row1 = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'];
     const row2 = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ñ'];
@@ -1258,14 +1258,40 @@ const HandsKeyboardIntro = ({ step }) => {
 
         const isF = char === 'f';
         const isJ = char === 'j';
+        const isD = char === 'd';
+        const isK = char === 'k';
         
         let isHighlighted = false;
-        if (step === 1 && isF) isHighlighted = true;
-        if (step === 2 && isJ) isHighlighted = true;
-        if (step === 3 && (isF || isJ)) isHighlighted = true;
+        if (lessonId === 5) {
+            if (step === 1 && isD) isHighlighted = true;
+            if (step === 2 && isK) isHighlighted = true;
+            if (step === 3 && (isD || isK)) isHighlighted = true;
+        } else {
+            if (step === 1 && isF) isHighlighted = true;
+            if (step === 2 && isJ) isHighlighted = true;
+            if (step === 3 && (isF || isJ)) isHighlighted = true;
+        }
 
         return (
             <g key={char}>
+                {isHighlighted && (
+                    <circle 
+                        cx={coords.x + 24} 
+                        cy={coords.y + 24} 
+                        r={44} 
+                        fill="rgba(37, 99, 225, 0.12)" 
+                        className="animate-pulse"
+                    />
+                )}
+                {isHighlighted && (
+                    <circle 
+                        cx={coords.x + 24} 
+                        cy={coords.y + 24} 
+                        r={28} 
+                        fill="rgba(37, 99, 225, 0.22)" 
+                        className="animate-pulse"
+                    />
+                )}
                 <rect 
                     x={coords.x} 
                     y={coords.y} 
@@ -1322,29 +1348,42 @@ const HandsKeyboardIntro = ({ step }) => {
             {row3.map(renderKey)}
 
             {/* Space Bar Key */}
-            <rect 
-                x={260} 
-                y={218} 
-                width={240} 
-                height={48} 
-                rx={8} 
-                className={`transition-colors duration-300 ${
-                    isSpaceHighlighted 
-                        ? 'fill-blue-600 stroke-blue-800 stroke-2' 
-                        : 'fill-white stroke-slate-300'
-                }`}
-                style={{ filter: isSpaceHighlighted ? 'drop-shadow(0 4px 6px rgba(37,99,235,0.3))' : '' }}
-            />
-            {isSpaceHighlighted && (
-                <text 
-                    x={380} 
-                    y={247} 
-                    textAnchor="middle" 
-                    className="font-sans font-bold text-xs select-none fill-white uppercase tracking-wider"
-                >
-                    espacio
-                </text>
-            )}
+            <g>
+                {isSpaceHighlighted && (
+                    <rect 
+                        x={260 - 8} 
+                        y={218 - 8} 
+                        width={240 + 16} 
+                        height={48 + 16} 
+                        rx={12} 
+                        fill="rgba(37, 99, 225, 0.12)" 
+                        className="animate-pulse"
+                    />
+                )}
+                <rect 
+                    x={260} 
+                    y={218} 
+                    width={240} 
+                    height={48} 
+                    rx={8} 
+                    className={`transition-colors duration-300 ${
+                        isSpaceHighlighted 
+                            ? 'fill-blue-600 stroke-blue-800 stroke-2' 
+                            : 'fill-white stroke-slate-300'
+                    }`}
+                    style={{ filter: isSpaceHighlighted ? 'drop-shadow(0 4px 6px rgba(37,99,235,0.3))' : '' }}
+                />
+                {isSpaceHighlighted && (
+                    <text 
+                        x={380} 
+                        y={247} 
+                        textAnchor="middle" 
+                        className="font-sans font-bold text-xs select-none fill-white uppercase tracking-wider"
+                    >
+                        espacio
+                    </text>
+                )}
+            </g>
 
             {/* Hands Outlines (drawn on top of keys) */}
             
@@ -1370,28 +1409,58 @@ const HandsKeyboardIntro = ({ step }) => {
 
             {/* Interactive Highlights */}
             
-            {/* Left Index Finger Highlight in Step 1 or 3 */}
-            {(step === 1 || step === 3) && (
-                <path 
-                    d="M278,290 C285,240 295,200 308,195 C314,188 322,188 324,195 C328,225 320,270 310,310" 
-                    fill="none" 
-                    stroke="#2563eb" 
-                    strokeWidth={4.5} 
-                    strokeLinecap="round"
-                    style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
-                />
+            {/* Left Hand Highlight */}
+            {lessonId === 5 ? (
+                // Left Middle Finger Highlight in Step 1 or 3
+                (step === 1 || step === 3) && (
+                    <path 
+                        d="M225,295 C230,250 240,200 252,190 C258,180 266,180 268,190 C273,230 276,270 278,290" 
+                        fill="none" 
+                        stroke="#2563eb" 
+                        strokeWidth={4.5} 
+                        strokeLinecap="round"
+                        style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
+                    />
+                )
+            ) : (
+                // Left Index Finger Highlight in Step 1 or 3
+                (step === 1 || step === 3) && (
+                    <path 
+                        d="M278,290 C285,240 295,200 308,195 C314,188 322,188 324,195 C328,225 320,270 310,310" 
+                        fill="none" 
+                        stroke="#2563eb" 
+                        strokeWidth={4.5} 
+                        strokeLinecap="round"
+                        style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
+                    />
+                )
             )}
 
-            {/* Right Index Finger Highlight in Step 2 or 3 */}
-            {(step === 2 || step === 3) && (
-                <path 
-                    d="M522,290 C515,240 505,200 492,195 C486,188 478,188 476,195 C472,225 480,270 490,310" 
-                    fill="none" 
-                    stroke="#2563eb" 
-                    strokeWidth={4.5} 
-                    strokeLinecap="round"
-                    style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
-                />
+            {/* Right Hand Highlight */}
+            {lessonId === 5 ? (
+                // Right Middle Finger Highlight in Step 2 or 3
+                (step === 2 || step === 3) && (
+                    <path 
+                        d="M575,295 C570,250 560,200 548,190 C542,180 534,180 532,190 C527,230 524,270 522,290" 
+                        fill="none" 
+                        stroke="#2563eb" 
+                        strokeWidth={4.5} 
+                        strokeLinecap="round"
+                        style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
+                    />
+                )
+            ) : (
+                // Right Index Finger Highlight in Step 2 or 3
+                (step === 2 || step === 3) && (
+                    <path 
+                        d="M522,290 C515,240 505,200 492,195 C486,188 478,188 476,195 C472,225 480,270 490,310" 
+                        fill="none" 
+                        stroke="#2563eb" 
+                        strokeWidth={4.5} 
+                        strokeLinecap="round"
+                        style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
+                    />
+                )
             )}
         </svg>
     );
@@ -1430,15 +1499,18 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         // Skip modifiers
         if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta' || e.key === 'CapsLock') return;
 
+        const expectedKeyStep1 = lessonId === 5 ? 'd' : 'f';
+        const expectedKeyStep2 = lessonId === 5 ? 'k' : 'j';
+
         if (introStep === 1) {
-            if (e.key === 'f' || e.key === 'F') {
+            if (e.key.toLowerCase() === expectedKeyStep1) {
                 playTypingSound(true, soundMuted);
                 setIntroStep(2);
             } else {
                 playTypingSound(false, soundMuted);
             }
         } else if (introStep === 2) {
-            if (e.key === 'j' || e.key === 'J') {
+            if (e.key.toLowerCase() === expectedKeyStep2) {
                 playTypingSound(true, soundMuted);
                 setIntroStep(3);
             } else {
@@ -1543,7 +1615,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         setStartTime(null);
         setCharsWithErrors({});
         
-        if (id === 2) {
+        if (id === 2 || id === 5) {
             setIntroStep(1);
             setPhase('intro');
         } else {
@@ -1738,21 +1810,25 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                         {introStep === 1 && (
                             <h3 className="text-2xl font-semibold text-gray-700 leading-relaxed flex items-center flex-wrap justify-center gap-2">
                                 Escribe la tecla 
-                                <span className="inline-flex items-center justify-center w-10 h-10 bg-blue-600 text-white font-bold rounded-lg shadow-md border-b-4 border-blue-800 text-lg select-none">f</span> 
-                                con tu dedo índice izquierdo.
+                                <span className="inline-flex items-center justify-center w-10 h-10 bg-blue-600 text-white font-bold rounded-lg shadow-md border-b-4 border-blue-800 text-lg select-none">
+                                    {lessonId === 5 ? 'd' : 'f'}
+                                </span> 
+                                con tu dedo {lessonId === 5 ? 'medio' : 'índice'} izquierdo.
                             </h3>
                         )}
                         {introStep === 2 && (
                             <h3 className="text-2xl font-semibold text-gray-700 leading-relaxed flex items-center flex-wrap justify-center gap-2">
                                 Escribe la tecla 
-                                <span className="inline-flex items-center justify-center w-10 h-10 bg-blue-600 text-white font-bold rounded-lg shadow-md border-b-4 border-blue-800 text-lg select-none">j</span> 
-                                con tu dedo índice derecho.
+                                <span className="inline-flex items-center justify-center w-10 h-10 bg-blue-600 text-white font-bold rounded-lg shadow-md border-b-4 border-blue-800 text-lg select-none">
+                                    {lessonId === 5 ? 'k' : 'j'}
+                                </span> 
+                                con tu dedo {lessonId === 5 ? 'medio' : 'índice'} derecho.
                             </h3>
                         )}
                         {introStep === 3 && (
                             <div className="space-y-4">
                                 <h3 className="text-xl font-medium text-gray-600 leading-relaxed max-w-lg mx-auto">
-                                    Ahora vamos a practicar tecleando las teclas <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded border-b-2 border-blue-800 text-xs shadow-sm">f</span> y <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded border-b-2 border-blue-800 text-xs shadow-sm">j</span>. ¡Tómate tu tiempo y asegúrate de hacerlo lo mejor que puedas!
+                                    Ahora vamos a practicar tecleando las teclas <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded border-b-2 border-blue-800 text-xs shadow-sm">{lessonId === 5 ? 'd' : 'f'}</span> y <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded border-b-2 border-blue-800 text-xs shadow-sm">{lessonId === 5 ? 'k' : 'j'}</span>. ¡Tómate tu tiempo y asegúrate de hacerlo lo mejor que puedas!
                                 </h3>
                                 <p className="text-2xl font-bold text-slate-800 mt-4 flex items-center justify-center gap-2">
                                     Presiona 
@@ -1765,7 +1841,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
 
                     {/* SVG Graphic with keyboard & hands */}
                     <div className="w-full max-w-3xl mx-auto bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner relative flex justify-center items-center">
-                        <HandsKeyboardIntro step={introStep} />
+                        <HandsKeyboardIntro step={introStep} lessonId={lessonId} />
                     </div>
                 </div>
             )}
