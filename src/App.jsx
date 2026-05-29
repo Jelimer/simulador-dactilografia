@@ -139,9 +139,9 @@ const TRAINING_LESSONS = [
     { id: 6, title: 'Revisión d & k', text: 'dd kk dk dk kd kd ddd kkd ddk dkk kkdd ddkk dddd kkkk ddkk kkdd kdd kddd dk kk', section: 'Fila guía' },
     { id: 7, title: 'Práctica: d & k', text: 'dd kk dd kk dk kd fd jk fd jk dd kk dk kd fd jk fd jk dd kk', section: 'Fila guía' },
     // 8: Juego fjdk - omitido
-    { id: 9, title: 'Teclas s & l', text: 's l s l ss ll sl ls sss lll d s k l ds kl sl ls ds lk sk dl', section: 'Fila guía' },
-    { id: 10, title: 'Revisión: s & l', text: 'ds kl sl ls ds lk sk dl ss ll sl ls ds kl sl ls ds lk sk dl', section: 'Fila guía' },
-    { id: 11, title: 'Práctica: s & l', text: 'sl ls sl ls ds kl ds kl ss ll sl ls sl ls sl ls ds kl ds kl', section: 'Fila guía' },
+    { id: 9, title: 'Teclas s & l', text: 'ssssllllssssllllssllssllslsllsls', section: 'Fila guía' },
+    { id: 10, title: 'Revisión s & l', text: 'll ss ssll slsl lsssl slls lsll ssl llss ssll slsl llsslsll ssl ssll slsl lsll ll', section: 'Fila guía' },
+    { id: 11, title: 'Práctica s & l', text: 'jj ff kk dd ll ssssd df fj jk kl sdfsk dl ks jf kd lslfl kl js kd jf sdfllk kkj jjf', section: 'Fila guía' },
     { id: 12, title: 'Teclas a & ñ', text: 'a ñ a ñ aa ññ añ ña aaa ñññ s a l ñ sa lñ as ña as ñs la ña', section: 'Fila guía' },
     { id: 13, title: 'Revisión: a & ñ', text: 'sa lñ as ña as ñs la ña aa ññ añ ña sa lñ as ña as ñs la ña', section: 'Fila guía' },
     { id: 14, title: 'Primeras 8 teclas', text: 'a s d f j k l ñ asdf jklñ as df jk lñ f d s a j k l ñ asdf', section: 'Fila guía' },
@@ -1260,12 +1260,18 @@ const HandsKeyboardIntro = ({ step, lessonId }) => {
         const isJ = char === 'j';
         const isD = char === 'd';
         const isK = char === 'k';
+        const isS = char === 's';
+        const isL = char === 'l';
         
         let isHighlighted = false;
         if (lessonId === 5) {
             if (step === 1 && isD) isHighlighted = true;
             if (step === 2 && isK) isHighlighted = true;
             if (step === 3 && (isD || isK)) isHighlighted = true;
+        } else if (lessonId === 9) {
+            if (step === 1 && isS) isHighlighted = true;
+            if (step === 2 && isL) isHighlighted = true;
+            if (step === 3 && (isS || isL)) isHighlighted = true;
         } else {
             if (step === 1 && isF) isHighlighted = true;
             if (step === 2 && isJ) isHighlighted = true;
@@ -1422,6 +1428,18 @@ const HandsKeyboardIntro = ({ step, lessonId }) => {
                         style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
                     />
                 )
+            ) : lessonId === 9 ? (
+                // Left Ring Finger Highlight in Step 1 or 3
+                (step === 1 || step === 3) && (
+                    <path 
+                        d="M170,300 C175,260 185,210 195,195 C200,185 208,185 210,195 C215,230 220,275 225,295" 
+                        fill="none" 
+                        stroke="#2563eb" 
+                        strokeWidth={4.5} 
+                        strokeLinecap="round"
+                        style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
+                    />
+                )
             ) : (
                 // Left Index Finger Highlight in Step 1 or 3
                 (step === 1 || step === 3) && (
@@ -1442,6 +1460,18 @@ const HandsKeyboardIntro = ({ step, lessonId }) => {
                 (step === 2 || step === 3) && (
                     <path 
                         d="M575,295 C570,250 560,200 548,190 C542,180 534,180 532,190 C527,230 524,270 522,290" 
+                        fill="none" 
+                        stroke="#2563eb" 
+                        strokeWidth={4.5} 
+                        strokeLinecap="round"
+                        style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
+                    />
+                )
+            ) : lessonId === 9 ? (
+                // Right Ring Finger Highlight in Step 2 or 3
+                (step === 2 || step === 3) && (
+                    <path 
+                        d="M630,300 C625,260 615,210 605,195 C600,185 592,185 590,195 C585,230 580,275 575,295" 
                         fill="none" 
                         stroke="#2563eb" 
                         strokeWidth={4.5} 
@@ -1499,8 +1529,8 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         // Skip modifiers
         if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta' || e.key === 'CapsLock') return;
 
-        const expectedKeyStep1 = lessonId === 5 ? 'd' : 'f';
-        const expectedKeyStep2 = lessonId === 5 ? 'k' : 'j';
+        const expectedKeyStep1 = lessonId === 5 ? 'd' : (lessonId === 9 ? 's' : 'f');
+        const expectedKeyStep2 = lessonId === 5 ? 'k' : (lessonId === 9 ? 'l' : 'j');
 
         if (introStep === 1) {
             if (e.key.toLowerCase() === expectedKeyStep1) {
@@ -1615,7 +1645,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         setStartTime(null);
         setCharsWithErrors({});
         
-        if (id === 2 || id === 5) {
+        if (id === 2 || id === 5 || id === 9) {
             setIntroStep(1);
             setPhase('intro');
         } else {
@@ -1811,24 +1841,24 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                             <h3 className="text-2xl font-semibold text-gray-700 leading-relaxed flex items-center flex-wrap justify-center gap-2">
                                 Escribe la tecla 
                                 <span className="inline-flex items-center justify-center w-10 h-10 bg-blue-600 text-white font-bold rounded-lg shadow-md border-b-4 border-blue-800 text-lg select-none">
-                                    {lessonId === 5 ? 'd' : 'f'}
+                                    {lessonId === 5 ? 'd' : (lessonId === 9 ? 's' : 'f')}
                                 </span> 
-                                con tu dedo {lessonId === 5 ? 'medio' : 'índice'} izquierdo.
+                                con tu dedo {lessonId === 5 ? 'medio' : (lessonId === 9 ? 'anular' : 'índice')} izquierdo.
                             </h3>
                         )}
                         {introStep === 2 && (
                             <h3 className="text-2xl font-semibold text-gray-700 leading-relaxed flex items-center flex-wrap justify-center gap-2">
                                 Escribe la tecla 
                                 <span className="inline-flex items-center justify-center w-10 h-10 bg-blue-600 text-white font-bold rounded-lg shadow-md border-b-4 border-blue-800 text-lg select-none">
-                                    {lessonId === 5 ? 'k' : 'j'}
+                                    {lessonId === 5 ? 'k' : (lessonId === 9 ? 'l' : 'j')}
                                 </span> 
-                                con tu dedo {lessonId === 5 ? 'medio' : 'índice'} derecho.
+                                con tu dedo {lessonId === 5 ? 'medio' : (lessonId === 9 ? 'anular' : 'índice')} derecho.
                             </h3>
                         )}
                         {introStep === 3 && (
                             <div className="space-y-4">
                                 <h3 className="text-xl font-medium text-gray-600 leading-relaxed max-w-lg mx-auto">
-                                    Ahora vamos a practicar tecleando las teclas <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded border-b-2 border-blue-800 text-xs shadow-sm">{lessonId === 5 ? 'd' : 'f'}</span> y <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded border-b-2 border-blue-800 text-xs shadow-sm">{lessonId === 5 ? 'k' : 'j'}</span>. ¡Tómate tu tiempo y asegúrate de hacerlo lo mejor que puedas!
+                                    Ahora vamos a practicar tecleando las teclas <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded border-b-2 border-blue-800 text-xs shadow-sm">{lessonId === 5 ? 'd' : (lessonId === 9 ? 's' : 'f')}</span> y <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white font-bold rounded border-b-2 border-blue-800 text-xs shadow-sm">{lessonId === 5 ? 'k' : (lessonId === 9 ? 'l' : 'j')}</span>. ¡Tómate tu tiempo y asegúrate de hacerlo lo mejor que puedas!
                                 </h3>
                                 <p className="text-2xl font-bold text-slate-800 mt-4 flex items-center justify-center gap-2">
                                     Presiona 
