@@ -61,46 +61,82 @@ const createAmbientTyping = () => {
     let ctx = null;
     let timeouts = [];
     let running = false;
+    let resumeListener = null;
 
     const playClick = () => {
         if (!running || !ctx || ctx.state === 'closed') return;
         try {
-            const bufferSize = Math.floor(ctx.sampleRate * 0.025);
-            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.12));
+            if (ctx.state === 'suspended') {
+                ctx.resume();
             }
-            const source = ctx.createBufferSource();
-            source.buffer = buffer;
-            source.playbackRate.value = 0.7 + Math.random() * 0.8;
 
-            const filter = ctx.createBiquadFilter();
-            filter.type = 'bandpass';
-            filter.frequency.value = 1800 + Math.random() * 3500;
-            filter.Q.value = 0.4 + Math.random() * 1.2;
+            const now = ctx.currentTime;
 
-            const gain = ctx.createGain();
-            gain.gain.value = 0.006 + Math.random() * 0.014;
+            // 1. CLICK DE ALTA FRECUENCIA (El contacto inicial metálico/plástico)
+            const clickSize = Math.floor(ctx.sampleRate * 0.015);
+            const clickBuffer = ctx.createBuffer(1, clickSize, ctx.sampleRate);
+            const clickData = clickBuffer.getChannelData(0);
+            for (let i = 0; i < clickSize; i++) {
+                clickData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (clickSize * 0.08));
+            }
+            const clickSource = ctx.createBufferSource();
+            clickSource.buffer = clickBuffer;
+            clickSource.playbackRate.value = 0.85 + Math.random() * 0.3;
 
-            source.connect(filter);
-            filter.connect(gain);
-            gain.connect(ctx.destination);
-            source.start(ctx.currentTime);
+            const clickFilter = ctx.createBiquadFilter();
+            clickFilter.type = 'highpass';
+            clickFilter.frequency.value = 2800 + Math.random() * 1200;
+
+            const clickGain = ctx.createGain();
+            clickGain.gain.setValueAtTime(0.02 + Math.random() * 0.03, now);
+            clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.012);
+
+            clickSource.connect(clickFilter);
+            clickFilter.connect(clickGain);
+            clickGain.connect(ctx.destination);
+
+            // 2. CLACK DE BAJA FRECUENCIA (El golpe de la tecla en el fondo del teclado)
+            const osc = ctx.createOscillator();
+            const oscGain = ctx.createGain();
+            
+            osc.type = 'triangle';
+            const baseFreq = 140 + Math.random() * 150;
+            osc.frequency.setValueAtTime(baseFreq, now);
+            osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.45, now + 0.03);
+
+            const oscFilter = ctx.createBiquadFilter();
+            oscFilter.type = 'bandpass';
+            oscFilter.frequency.value = 900 + Math.random() * 700;
+            oscFilter.Q.value = 0.8 + Math.random() * 0.6;
+
+            oscGain.gain.setValueAtTime(0.05 + Math.random() * 0.06, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+            osc.connect(oscFilter);
+            oscFilter.connect(oscGain);
+            oscGain.connect(ctx.destination);
+
+            clickSource.start(now);
+            osc.start(now);
+            osc.stop(now + 0.035);
         } catch (e) {}
     };
 
     const scheduleTypist = (avgDelay) => {
         const next = () => {
             if (!running) return;
-            const delay = avgDelay * (0.4 + Math.random() * 1.2);
+            const delay = avgDelay * (0.35 + Math.random() * 1.3);
             const t = setTimeout(() => {
                 if (!running) return;
                 playClick();
-                if (Math.random() > 0.55) {
-                    const burst = 1 + Math.floor(Math.random() * 3);
+                
+                // Ráfagas ocasionales de tipeo rápido (dobles clics)
+                if (Math.random() > 0.6) {
+                    const burst = 1 + Math.floor(Math.random() * 2);
                     for (let i = 0; i < burst; i++) {
-                        const bt = setTimeout(() => { if (running) playClick(); }, (i + 1) * (25 + Math.random() * 55));
+                        const bt = setTimeout(() => { 
+                            if (running) playClick(); 
+                        }, (i + 1) * (35 + Math.random() * 45));
                         timeouts.push(bt);
                     }
                 }
@@ -115,17 +151,52 @@ const createAmbientTyping = () => {
         start() {
             if (running) return;
             running = true;
-            ctx = new (window.AudioContext || window.webkitAudioContext)();
-            scheduleTypist(110);
-            scheduleTypist(170);
-            scheduleTypist(240);
-            scheduleTypist(320);
+            
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            ctx = new AudioContext();
+
+            const resumeAudio = () => {
+                if (ctx && ctx.state === 'suspended') {
+                    ctx.resume().catch(() => {});
+                }
+            };
+
+            // Intentar reanudar de inmediato
+            resumeAudio();
+
+            // Registrar listeners para reanudar el audio con la primera interacción del usuario
+            resumeListener = resumeAudio;
+            window.addEventListener('keydown', resumeListener, { passive: true });
+            window.addEventListener('click', resumeListener, { passive: true });
+
+            // Simular 10 personas escribiendo con distintas velocidades
+            scheduleTypist(120); // Persona 1 (Rápido)
+            scheduleTypist(155); // Persona 2
+            scheduleTypist(190); // Persona 3 (Medio-rápido)
+            scheduleTypist(225); // Persona 4
+            scheduleTypist(260); // Persona 5 (Medio)
+            scheduleTypist(300); // Persona 6
+            scheduleTypist(340); // Persona 7 (Medio-lento)
+            scheduleTypist(380); // Persona 8
+            scheduleTypist(430); // Persona 9 (Lento)
+            scheduleTypist(500); // Persona 10 (Muy lento / constante)
         },
         stop() {
             running = false;
             timeouts.forEach(t => clearTimeout(t));
             timeouts = [];
-            if (ctx && ctx.state !== 'closed') { try { ctx.close(); } catch(e) {} }
+            
+            if (resumeListener) {
+                window.removeEventListener('keydown', resumeListener);
+                window.removeEventListener('click', resumeListener);
+                resumeListener = null;
+            }
+
+            if (ctx && ctx.state !== 'closed') { 
+                try { 
+                    ctx.close(); 
+                } catch(e) {} 
+            }
             ctx = null;
         }
     };
