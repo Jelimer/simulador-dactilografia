@@ -1526,10 +1526,7 @@ const HandsKeyboardIntro = ({ step, lessonId }) => {
     );
 };
 
-const HoldKeyOverlay = ({ requiredKey }) => {
-    const isJ = requiredKey === 'j';
-    const isF = requiredKey === 'f';
-
+const HandsKeyboardInteractive = ({ expectedChar, anchorKey }) => {
     const row1 = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'];
     const row2 = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ñ'];
     const row3 = ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '-'];
@@ -1546,117 +1543,235 @@ const HoldKeyOverlay = ({ requiredKey }) => {
         return null;
     };
 
+    const renderFingerHighlight = (expectedFinger, anchorFinger, fingerName, pathD, isThumbLeft = null) => {
+        let isExpected = false;
+        if (fingerName === 'Thumb' && isThumbLeft !== null) {
+            isExpected = (expectedFinger === 'Thumb') && (isThumbLeft ? (anchorKey === 'j') : (anchorKey === 'f'));
+        } else {
+            isExpected = (expectedFinger === fingerName);
+        }
+
+        const isAnchor = (fingerName === 'Thumb' && isThumbLeft !== null) 
+            ? false 
+            : (anchorFinger === fingerName);
+
+        if (isExpected) {
+            return (
+                <path 
+                    d={pathD} 
+                    fill="none" 
+                    stroke="#2563eb" 
+                    strokeWidth={4.5} 
+                    strokeLinecap="round"
+                    style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
+                />
+            );
+        }
+        if (isAnchor) {
+            return (
+                <path 
+                    d={pathD} 
+                    fill="none" 
+                    stroke="#ea580c" 
+                    strokeWidth={4.5} 
+                    strokeLinecap="round"
+                    style={{ filter: 'drop-shadow(0 2px 4px rgba(234,88,12,0.4))' }}
+                />
+            );
+        }
+        return null;
+    };
+
     const renderKey = (char) => {
         const coords = getKeyCoords(char);
         if (!coords) return null;
 
-        const isTarget = char === requiredKey;
+        const isExpected = expectedChar && char.toLowerCase() === expectedChar.toLowerCase();
+        const isAnchor = anchorKey && char.toLowerCase() === anchorKey.toLowerCase();
+        
+        let highlightClass = 'fill-white stroke-slate-300';
+        let textClass = 'fill-slate-600';
+        let filterEffect = '';
+        let isHighlighted = false;
+
+        if (isAnchor) {
+            highlightClass = 'fill-orange-500 stroke-orange-600 stroke-2';
+            textClass = 'fill-white';
+            filterEffect = 'drop-shadow(0 4px 6px rgba(249,115,22,0.3))';
+            isHighlighted = true;
+        } else if (isExpected) {
+            highlightClass = 'fill-blue-600 stroke-blue-800 stroke-2';
+            textClass = 'fill-white';
+            filterEffect = 'drop-shadow(0 4px 6px rgba(37,99,235,0.3))';
+            isHighlighted = true;
+        }
+
+        const isF = char === 'f';
+        const isJ = char === 'j';
 
         return (
             <g key={char}>
+                {isExpected && (
+                    <>
+                        <circle 
+                            cx={coords.x + 24} 
+                            cy={coords.y + 24} 
+                            r={44} 
+                            fill="rgba(37, 99, 225, 0.12)" 
+                            className="animate-pulse"
+                        />
+                        <circle 
+                            cx={coords.x + 24} 
+                            cy={coords.y + 24} 
+                            r={28} 
+                            fill="rgba(37, 99, 225, 0.22)" 
+                            className="animate-pulse"
+                        />
+                    </>
+                )}
+                {isAnchor && (
+                    <>
+                        <circle 
+                            cx={coords.x + 24} 
+                            cy={coords.y + 24} 
+                            r={44} 
+                            fill="rgba(249, 115, 22, 0.12)" 
+                            className="animate-pulse"
+                        />
+                        <circle 
+                            cx={coords.x + 24} 
+                            cy={coords.y + 24} 
+                            r={28} 
+                            fill="rgba(249, 115, 22, 0.22)" 
+                            className="animate-pulse"
+                        />
+                    </>
+                )}
                 <rect 
                     x={coords.x} 
                     y={coords.y} 
                     width={48} 
                     height={48} 
                     rx={8} 
-                    className={`transition-colors duration-300 ${
-                        isTarget 
-                            ? 'fill-orange-500 stroke-orange-600 stroke-2' 
-                            : 'fill-slate-800 stroke-slate-700'
-                    }`}
+                    className={`transition-colors duration-300 ${highlightClass}`}
+                    style={{ filter: filterEffect }}
                 />
                 <text 
                     x={coords.x + 24} 
                     y={coords.y + 29} 
                     textAnchor="middle" 
-                    className={`font-sans font-bold text-base select-none uppercase ${
-                        isTarget ? 'fill-white' : 'fill-slate-400'
-                    }`}
+                    className={`font-sans font-bold text-base select-none uppercase ${textClass}`}
                 >
                     {char}
                 </text>
+                {/* Bump on f & j keys */}
+                {(isF || isJ) && (
+                    <line 
+                        x1={coords.x + 18} 
+                        y1={coords.y + 38} 
+                        x2={coords.x + 30} 
+                        y2={coords.y + 38} 
+                        stroke={isHighlighted ? '#bfdbfe' : '#94a3b8'} 
+                        strokeWidth={2} 
+                        strokeLinecap="round"
+                    />
+                )}
             </g>
         );
     };
 
+    const isSpaceExpected = expectedChar === ' ';
+
+    // Helper to get which hand/finger is highlighted
+    const expectedFinger = expectedChar ? getFingerForKey(expectedChar) : null;
+    const anchorFinger = anchorKey ? getFingerForKey(anchorKey) : null;
+
     return (
-        <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-8 rounded-xl transition-all duration-300">
-            <h2 className="text-3xl font-bold text-white text-center mb-8 flex items-center gap-3">
-                Mantén presionada la tecla 
-                <span className="inline-flex items-center justify-center w-12 h-12 bg-white text-slate-900 font-bold rounded-xl shadow-lg text-xl select-none border-b-4 border-slate-300">
-                    {requiredKey}
-                </span> 
-                mientras escribes esta lección.
-            </h2>
-            
-            <div className="w-full max-w-2xl bg-slate-900/40 p-6 rounded-2xl border border-slate-850 shadow-2xl relative">
-                <svg viewBox="0 0 800 480" className="w-full h-auto">
-                    {/* Keyboard Background Panel */}
-                    <rect x={70} y={30} width={660} height={252} rx={16} fill="#1e293b" stroke="#334155" strokeWidth={2} />
+        <div className="w-full max-w-3xl mx-auto bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner relative flex justify-center items-center mt-6">
+            <svg viewBox="0 0 800 480" className="w-full h-auto">
+                {/* Keyboard Background Panel */}
+                <rect x={70} y={30} width={660} height={252} rx={16} fill="#f1f5f9" stroke="#e2e8f0" strokeWidth={2} />
 
-                    {/* Row 1 Keys */}
-                    {row1.map(renderKey)}
+                {/* Row 1 Keys */}
+                {row1.map(renderKey)}
 
-                    {/* Row 2 Keys */}
-                    {row2.map(renderKey)}
+                {/* Row 2 Keys */}
+                {row2.map(renderKey)}
 
-                    {/* Row 3 Keys */}
-                    {row3.map(renderKey)}
+                {/* Row 3 Keys */}
+                {row3.map(renderKey)}
 
-                    {/* Space Bar Key */}
+                {/* Space Bar Key */}
+                <g>
+                    {isSpaceExpected && (
+                        <rect 
+                            x={260 - 8} 
+                            y={218 - 8} 
+                            width={240 + 16} 
+                            height={48 + 16} 
+                            rx={12} 
+                            fill="rgba(37, 99, 225, 0.12)" 
+                            className="animate-pulse"
+                        />
+                    )}
                     <rect 
                         x={260} 
                         y={218} 
                         width={240} 
                         height={48} 
                         rx={8} 
-                        className="fill-slate-800 stroke-slate-700"
+                        className={`transition-colors duration-300 ${
+                            isSpaceExpected 
+                                ? 'fill-blue-600 stroke-blue-800 stroke-2' 
+                                : 'fill-white stroke-slate-300'
+                        }`}
+                        style={{ filter: isSpaceExpected ? 'drop-shadow(0 4px 6px rgba(37,99,235,0.3))' : '' }}
                     />
-
-                    {/* Left Hand Outline */}
-                    <path 
-                        d="M100,480 C110,400 120,330 135,310 C130,270 135,225 142,210 C146,200 152,200 154,210 C160,240 165,280 170,300 C175,260 185,210 195,195 C200,185 208,185 210,195 C215,230 220,275 225,295 C230,250 240,200 252,190 C258,180 266,180 268,190 C273,230 276,270 278,290 C285,240 295,200 308,195 C314,188 322,188 324,195 C328,225 320,270 310,310 C320,310 330,290 342,275 C348,268 355,272 355,280 C350,300 330,340 300,380 C270,410 260,450 250,480"
-                        fill="none" 
-                        stroke={isF ? '#ffffff' : '#475569'} 
-                        strokeWidth={isF ? 2.5 : 1.5} 
-                        strokeLinejoin="round"
-                        className={isF ? '' : 'opacity-30'}
-                    />
-                    
-                    {/* Right Hand Outline */}
-                    <path 
-                        d="M700,480 C690,400 680,330 665,310 C670,270 665,225 658,210 C654,200 648,200 646,210 C640,240 635,280 630,300 C625,260 615,210 605,195 C600,185 592,185 590,195 C585,230 580,275 575,295 C570,250 560,200 548,190 C542,180 534,180 532,190 C527,230 524,270 522,290 C515,240 505,200 492,195 C486,188 478,188 476,195 C472,225 480,270 490,310 C480,310 470,290 458,275 C452,268 445,272 445,280 C450,300 470,340 500,380 C530,410 540,450 550,480"
-                        fill="none" 
-                        stroke={isJ ? '#ffffff' : '#475569'} 
-                        strokeWidth={isJ ? 2.5 : 1.5} 
-                        strokeLinejoin="round"
-                        className={isJ ? '' : 'opacity-30'}
-                    />
-
-                    {/* Highlighted index finger */}
-                    {isF && (
-                        <path 
-                            d="M278,290 C285,240 295,200 308,195 C314,188 322,188 324,195 C328,225 320,270 310,310" 
-                            fill="none" 
-                            stroke="#f97316" 
-                            strokeWidth={5} 
-                            strokeLinecap="round"
-                            style={{ filter: 'drop-shadow(0 0 8px rgba(249,115,22,0.8))' }}
-                        />
+                    {isSpaceExpected && (
+                        <text 
+                            x={380} 
+                            y={247} 
+                            textAnchor="middle" 
+                            className="font-sans font-bold text-xs select-none fill-white uppercase tracking-wider"
+                        >
+                            espacio
+                        </text>
                     )}
-                    {isJ && (
-                        <path 
-                            d="M522,290 C515,240 505,200 492,195 C486,188 478,188 476,195 C472,225 480,270 490,310" 
-                            fill="none" 
-                            stroke="#f97316" 
-                            strokeWidth={5} 
-                            strokeLinecap="round"
-                            style={{ filter: 'drop-shadow(0 0 8px rgba(249,115,22,0.8))' }}
-                        />
-                    )}
-                </svg>
-            </div>
+                </g>
+
+                {/* Left Hand Outline */}
+                <path 
+                    d="M100,480 C110,400 120,330 135,310 C130,270 135,225 142,210 C146,200 152,200 154,210 C160,240 165,280 170,300 C175,260 185,210 195,195 C200,185 208,185 210,195 C215,230 220,275 225,295 C230,250 240,200 252,190 C258,180 266,180 268,190 C273,230 276,270 278,290 C285,240 295,200 308,195 C314,188 322,188 324,195 C328,225 320,270 310,310 C320,310 330,290 342,275 C348,268 355,272 355,280 C350,300 330,340 300,380 C270,410 260,450 250,480"
+                    fill="none" 
+                    stroke="#cbd5e1" 
+                    strokeWidth={2} 
+                    strokeLinejoin="round"
+                    className="opacity-70"
+                />
+                
+                {/* Right Hand Outline */}
+                <path 
+                    d="M700,480 C690,400 680,330 665,310 C670,270 665,225 658,210 C654,200 648,200 646,210 C640,240 635,280 630,300 C625,260 615,210 605,195 C600,185 592,185 590,195 C585,230 580,275 575,295 C570,250 560,200 548,190 C542,180 534,180 532,190 C527,230 524,270 522,290 C515,240 505,200 492,195 C486,188 478,188 476,195 C472,225 480,270 490,310 C480,310 470,290 458,275 C452,268 445,272 445,280 C450,300 470,340 500,380 C530,410 540,450 550,480"
+                    fill="none" 
+                    stroke="#cbd5e1" 
+                    strokeWidth={2} 
+                    strokeLinejoin="round"
+                    className="opacity-70"
+                />
+
+                {/* Finger Highlights */}
+                {renderFingerHighlight(expectedFinger, anchorFinger, 'L-Pinky', 'M135,310 C130,270 135,225 142,210 C146,200 152,200 154,210 C160,240 165,280 170,300')}
+                {renderFingerHighlight(expectedFinger, anchorFinger, 'L-Ring', 'M170,300 C175,260 185,210 195,195 C200,185 208,185 210,195 C215,230 220,275 225,295')}
+                {renderFingerHighlight(expectedFinger, anchorFinger, 'L-Middle', 'M225,295 C230,250 240,200 252,190 C258,180 266,180 268,190 C273,230 276,270 278,290')}
+                {renderFingerHighlight(expectedFinger, anchorFinger, 'L-Index', 'M278,290 C285,240 295,200 308,195 C314,188 322,188 324,195 C328,225 320,270 310,310')}
+                {renderFingerHighlight(expectedFinger, anchorFinger, 'Thumb', 'M342,275 C348,268 355,272 355,280 C350,300 330,340 300,380', true)}
+
+                {renderFingerHighlight(expectedFinger, anchorFinger, 'Thumb', 'M458,275 C452,268 445,272 445,280 C450,300 470,340 500,380', false)}
+                {renderFingerHighlight(expectedFinger, anchorFinger, 'R-Index', 'M522,290 C515,240 505,200 492,195 C486,188 478,188 476,195 C472,225 480,270 490,310')}
+                {renderFingerHighlight(expectedFinger, anchorFinger, 'R-Middle', 'M575,295 C570,250 560,200 548,190 C542,180 534,180 532,190 C527,230 524,270 522,290')}
+                {renderFingerHighlight(expectedFinger, anchorFinger, 'R-Ring', 'M630,300 C625,260 615,210 605,195 C600,185 592,185 590,195 C585,230 580,275 575,295')}
+                {renderFingerHighlight(expectedFinger, anchorFinger, 'R-Pinky', 'M665,310 C670,270 665,225 658,210 C654,200 648,200 646,210 C640,240 635,280 630,300')}
+            </svg>
         </div>
     );
 };
@@ -2089,7 +2204,18 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                 >
                     {/* Hold key overlay for Lesson 16 and 17 */}
                     {(lessonId === 16 || lessonId === 17) && !isHoldingRequiredKey && (
-                        <HoldKeyOverlay requiredKey={lessonId === 16 ? 'j' : 'f'} />
+                        <div 
+                            onClick={() => containerRef.current?.focus()}
+                            className="absolute inset-0 bg-slate-950/90 backdrop-blur-[1.5px] z-50 flex flex-col items-center justify-start pt-16 px-8 rounded-xl transition-all duration-300 cursor-pointer"
+                        >
+                            <h2 className="text-3xl font-bold text-white text-center mb-8 flex items-center gap-3 select-none">
+                                Mantén presionada la tecla 
+                                <span className="inline-flex items-center justify-center w-12 h-12 bg-white text-slate-900 font-bold rounded-xl shadow-lg text-xl border-b-4 border-slate-300">
+                                    {lessonId === 16 ? 'j' : 'f'}
+                                </span> 
+                                mientras escribes esta lección.
+                            </h2>
+                        </div>
                     )}
                     <div className="flex justify-between w-full mb-6 text-gray-500 font-bold uppercase tracking-wider text-xs border-b pb-4">
                         <span className="text-blue-700">Lección {lesson.id}: {lesson.title}</span>
@@ -2131,8 +2257,17 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                         )}
                     </div>
 
-                    <KeyboardLayout expectedChar={lesson.text[typedCount]} />
-                    <HandsGuide expectedChar={lesson.text[typedCount]} />
+                    {(lessonId === 16 || lessonId === 17) ? (
+                        <HandsKeyboardInteractive 
+                            expectedChar={lesson.text[typedCount]} 
+                            anchorKey={lessonId === 16 ? 'j' : 'f'}
+                        />
+                    ) : (
+                        <>
+                            <KeyboardLayout expectedChar={lesson.text[typedCount]} />
+                            <HandsGuide expectedChar={lesson.text[typedCount]} />
+                        </>
+                    )}
                 </div>
             )}
 
