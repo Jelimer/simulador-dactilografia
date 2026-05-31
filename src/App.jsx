@@ -305,7 +305,7 @@ const TRAINING_LESSONS = [
     // Fila superior
     { id: 23, title: 'Teclas r & u', text: 'rrruuruuuuruurrruruurrrruruuuruu', section: 'Fila superior' },
     { id: 24, title: 'Revisión: r & u', text: 'rr uu rruu ruru urrru ruur uruu rru uurr rruu ruru uurruruu rru rruu ruru uruu uu', section: 'Fila superior' },
-    { id: 25, title: 'Práctica: r & u', text: 'fur jur dru kur rud urd rudy jury fur jur dru kur rud urd', section: 'Fila superior' },
+    { id: 25, title: 'Práctica: r & u', text: 'larusa rusa krull laura durasa durafa guru dura sudar salar salada furasa farusa darasa arañada', section: 'Fila superior' },
     { id: 26, title: 'Teclas e & i', text: 'e i e i ee ii ei ie eee iii de ki ei ie de ki ei ie de ki', section: 'Fila superior' },
     { id: 27, title: 'Revisión: e & i', text: 'de ki ei ie de ik ie ki ee ii ei ie de ki ei ie de ik ie ki', section: 'Fila superior' },
     { id: 28, title: 'Práctica: e & i', text: 'diente kiko elfo idea irene elias kilo diente kiko elfo idea', section: 'Fila superior' },
