@@ -310,9 +310,9 @@ const TRAINING_LESSONS = [
     { id: 27, title: 'Revisión: e & i', text: 'ee ii eeii eiei ieeei eiie ieii eei iiee eeii eiei iieeieii eei eeii eiei ieii ii', section: 'Fila superior' },
     { id: 28, title: 'Práctica: e & i', text: 'de ese desde deja ideales edad falsedad duradera jaladera areiña direña dueña kalaña salañera ruña', section: 'Fila superior' },
     { id: 29, title: '¡Postura saludable!', text: 'mantener la espalda recta y los pies apoyados en el suelo', section: 'Fila superior' },
-    { id: 30, title: 'Revisión Base + ruei', text: 'f j d k s l a ñ r u e i ruei ruei fjdk f j d k s l a ñ r u e i', section: 'Fila superior' },
-    { id: 31, title: 'Fila superior: Izquierda', text: 'q w e r t qwert qwert qwert qwert q w e r t q w e r t qwert', section: 'Fila superior' },
-    { id: 32, title: 'Fila superior: Derecha', text: 'y u i o p yuiop yuiop yuiop yuiop y u i o p y u i o p yuiop', section: 'Fila superior' },
+    { id: 30, title: 'Revisión Base + ruei', text: 'de larusa ese desde laureada sudar salar saña falsedad jaladera alajas areiña huraña duraña guruña deruña', section: 'Fila superior' },
+    { id: 31, title: 'Fila superior: Izquierda', text: 'ese fare sare are dare ades fares dares sera dera asara gara sara garafa gada sara fara gaga dada rega', section: 'Fila superior' },
+    { id: 32, title: 'Fila superior: Derecha', text: 'hilu ilil killu ñill ñlik jiñl jkñh jlul kñl julk jijl llññ jññk lkjñ ñlkj jill hill kihñ khil kñil likh', section: 'Fila superior' },
     // 33: Juego ruei - omitido
     { id: 34, title: 'Teclas w & o', text: 'w o w o ww oo wo ow www ooo sw lo wo ow sw lo wo ow sw lo', section: 'Fila superior' },
     { id: 35, title: 'Revisión: w & o', text: 'sw lo wo ow sw ol ow lo ww oo wo ow sw lo wo ow sw ol ow', section: 'Fila superior' },
@@ -1973,7 +1973,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
 
     useEffect(() => {
         const handleBlur = () => {
-            if (lessonId === 16 || lessonId === 17) {
+            if (lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32) {
                 setIsHoldingRequiredKey(false);
             }
         };
@@ -2038,9 +2038,9 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         // Ignorar teclas modificadoras/especiales
         if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta' || e.key === 'CapsLock') return;
 
-        // hold key logic for lesson 16 & 17
-        if (lessonId === 16 || lessonId === 17) {
-            const requiredKey = lessonId === 16 ? 'j' : 'f';
+        // hold key logic for lesson 16, 17, 31 & 32
+        if (lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32) {
+            const requiredKey = (lessonId === 16 || lessonId === 31) ? 'j' : 'f';
             if (e.key.toLowerCase() === requiredKey) {
                 if (!isHoldingRequiredKey) {
                     setIsHoldingRequiredKey(true);
@@ -2127,8 +2127,8 @@ const Entrenamiento = ({ history, onAddHistory }) => {
 
     const handleKeyUp = (e) => {
         if (phase !== 'typing') return;
-        if (lessonId === 16 || lessonId === 17) {
-            const requiredKey = lessonId === 16 ? 'j' : 'f';
+        if (lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32) {
+            const requiredKey = (lessonId === 16 || lessonId === 31) ? 'j' : 'f';
             if (e.key.toLowerCase() === requiredKey) {
                 setIsHoldingRequiredKey(false);
             }
@@ -2382,8 +2382,8 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     onKeyUp={handleKeyUp}
                     className="w-full focus:outline-none flex flex-col items-center py-6 px-8 transition-colors rounded-xl bg-white shadow-sm border border-gray-200 relative"
                 >
-                    {/* Hold key overlay for Lesson 16 and 17 */}
-                    {(lessonId === 16 || lessonId === 17) && !isHoldingRequiredKey && (
+                    {/* Hold key overlay for Lesson 16, 17, 31 and 32 */}
+                    {(lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32) && !isHoldingRequiredKey && (
                         <div 
                             onClick={() => containerRef.current?.focus()}
                             className="absolute inset-0 bg-slate-950/90 backdrop-blur-[1.5px] z-50 flex flex-col items-center justify-start pt-16 px-8 rounded-xl transition-all duration-300 cursor-pointer"
@@ -2391,7 +2391,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                             <h2 className="text-3xl font-bold text-white text-center mb-8 flex items-center gap-3 select-none">
                                 Mantén presionada la tecla 
                                 <span className="inline-flex items-center justify-center w-12 h-12 bg-white text-slate-900 font-bold rounded-xl shadow-lg text-xl border-b-4 border-slate-300">
-                                    {lessonId === 16 ? 'j' : 'f'}
+                                    {(lessonId === 16 || lessonId === 31) ? 'j' : 'f'}
                                 </span> 
                                 mientras escribes esta lección.
                             </h2>
@@ -2440,19 +2440,19 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     </div>
 
                     <div className="text-sm text-gray-500 mb-2 font-medium">
-                        {(lessonId === 16 || lessonId === 17) ? (
+                        {(lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32) ? (
                             <span className="text-orange-600 font-bold">
-                                ¡Mantén presionada la tecla {lessonId === 16 ? 'j' : 'f'}!
+                                ¡Mantén presionada la tecla {(lessonId === 16 || lessonId === 31) ? 'j' : 'f'}!
                             </span>
                         ) : (
                             "Presiona la tecla resaltada en tu teclado físico:"
                         )}
                     </div>
 
-                    {(lessonId === 16 || lessonId === 17) ? (
+                    {(lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32) ? (
                         <HandsKeyboardInteractive 
                             expectedChar={lesson.text[typedCount]} 
-                            anchorKey={lessonId === 16 ? 'j' : 'f'}
+                            anchorKey={(lessonId === 16 || lessonId === 31) ? 'j' : 'f'}
                         />
                     ) : (
                         <>
