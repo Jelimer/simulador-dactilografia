@@ -887,26 +887,57 @@ const EvolutionCharts = ({ filteredAttempts }) => {
     }
 
     const maxWpm = Math.max(...filteredAttempts.map(a => a.wpm), 30);
-    const maxScale = Math.max(100, maxWpm);
+
+    // Calculemos los rangos dinámicos para evitar que se vean aplastados
+    const wpms = filteredAttempts.map(a => a.wpm);
+    const precs = filteredAttempts.map(a => a.precision);
+
+    const minWpmVal = Math.min(...wpms);
+    const maxWpmVal = Math.max(...wpms);
+    let minW = minWpmVal - 2;
+    let maxW = maxWpmVal + 2;
+    if (minW < 0) minW = 0;
+    if (maxW === minW) {
+        minW = Math.max(0, minW - 5);
+        maxW = maxW + 5;
+    }
+    const wpmRange = maxW - minW;
+
+    const minPrecVal = Math.min(...precs);
+    const maxPrecVal = Math.max(...precs);
+    let minP = minPrecVal - 2;
+    let maxP = maxPrecVal + 2;
+    if (minP < 0) minP = 0;
+    if (maxP > 100) maxP = 100;
+    if (maxP === minP) {
+        minP = Math.max(0, minP - 5);
+        maxP = Math.min(100, maxP + 5);
+    }
+    const precRange = maxP - minP;
 
     // Prepare points for combined chart
     const paddingX = 40;
-    const paddingY = 30;
+    const paddingY = 40;
     const plotW = 520;
-    const plotH = 260; // 320 height - 2*30 padding
 
     const points = filteredAttempts.map((a, idx) => {
         const x = filteredAttempts.length === 1 
             ? paddingX + plotW / 2 
             : paddingX + (idx / (filteredAttempts.length - 1)) * plotW;
-        const y_wpm = (320 - paddingY) - (a.wpm / maxScale) * plotH;
-        const y_prec = (320 - paddingY) - (a.precision / maxScale) * plotH;
+        
+        // Mapeo dinámico e independiente a bandas verticales
+        // Precisión: rango vertical superior [40, 180] (altura de 140px)
+        const y_prec = 180 - ((a.precision - minP) / precRange) * 140;
+        
+        // Velocidad: rango vertical inferior [220, 360] (altura de 140px)
+        const y_wpm = 360 - ((a.wpm - minW) / wpmRange) * 140;
+        
         return { x, y_wpm, y_prec, wpm: a.wpm, precision: a.precision, timeOnly: a.timeOnly };
     });
 
     const wpmPath = points.length > 1 ? points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y_wpm}`).join(' ') : '';
     const precPath = points.length > 1 ? points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y_prec}`).join(' ') : '';
-    const wpmAreaPath = points.length > 1 ? `${wpmPath} L ${points[points.length - 1].x} ${320 - paddingY} L ${points[0].x} ${320 - paddingY} Z` : '';
+    const wpmAreaPath = points.length > 1 ? `${wpmPath} L ${points[points.length - 1].x} 360 L ${points[0].x} 360 Z` : '';
 
     return (
         <div className="w-full space-y-6 mt-8">
@@ -1002,8 +1033,8 @@ const EvolutionCharts = ({ filteredAttempts }) => {
                     </div>
                 </div>
                 
-                <div className="relative w-full h-[320px] px-2 select-none overflow-visible">
-                    <svg width="100%" height="100%" viewBox="0 0 600 320" preserveAspectRatio="none" className="overflow-visible">
+                <div className="relative w-full h-[400px] px-2 select-none overflow-visible">
+                    <svg width="100%" height="100%" viewBox="0 0 600 400" preserveAspectRatio="none" className="overflow-visible">
                         <defs>
                             <linearGradient id="speedCombinedGrad" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor="#3e5c76" stopOpacity="0.12" />
@@ -1011,12 +1042,15 @@ const EvolutionCharts = ({ filteredAttempts }) => {
                             </linearGradient>
                         </defs>
                         
-                        {/* Líneas de Guía Horizontales */}
-                        <line x1={paddingX} y1={paddingY} x2={paddingX + plotW} y2={paddingY} stroke="#f1f5f9" strokeDasharray="3 3" />
-                        <line x1={paddingX} y1={paddingY + plotH * 0.25} x2={paddingX + plotW} y2={paddingY + plotH * 0.25} stroke="#f1f5f9" strokeDasharray="3 3" />
-                        <line x1={paddingX} y1={paddingY + plotH * 0.5} x2={paddingX + plotW} y2={paddingY + plotH * 0.5} stroke="#f1f5f9" strokeDasharray="3 3" />
-                        <line x1={paddingX} y1={paddingY + plotH * 0.75} x2={paddingX + plotW} y2={paddingY + plotH * 0.75} stroke="#f1f5f9" strokeDasharray="3 3" />
-                        <line x1={paddingX} y1={paddingY + plotH} x2={paddingX + plotW} y2={paddingY + plotH} stroke="#e2e8f0" strokeWidth="1" />
+                        {/* Líneas de Guía para Precisión */}
+                        <line x1={paddingX} y1={40} x2={paddingX + plotW} y2={40} stroke="#f1f5f9" strokeDasharray="3 3" />
+                        <line x1={paddingX} y1={110} x2={paddingX + plotW} y2={110} stroke="#f1f5f9" strokeDasharray="3 3" />
+                        <line x1={paddingX} y1={180} x2={paddingX + plotW} y2={180} stroke="#e2e8f0" strokeDasharray="3 3" />
+                        
+                        {/* Líneas de Guía para Velocidad */}
+                        <line x1={paddingX} y1={220} x2={paddingX + plotW} y2={220} stroke="#f1f5f9" strokeDasharray="3 3" />
+                        <line x1={paddingX} y1={290} x2={paddingX + plotW} y2={290} stroke="#f1f5f9" strokeDasharray="3 3" />
+                        <line x1={paddingX} y1={360} x2={paddingX + plotW} y2={360} stroke="#e2e8f0" strokeWidth="1" />
                         
                         {/* Relleno bajo la línea de velocidad */}
                         {wpmAreaPath && <path d={wpmAreaPath} fill="url(#speedCombinedGrad)" />}
@@ -1043,7 +1077,7 @@ const EvolutionCharts = ({ filteredAttempts }) => {
                                 </text>
                                 
                                 {/* Etiqueta del Eje X (Fecha/Hora) */}
-                                <text x={p.x} y="312" fontSize="9" fill="#94a3b8" textAnchor="middle">
+                                <text x={p.x} y="385" fontSize="9" fill="#94a3b8" textAnchor="middle">
                                     {p.timeOnly}
                                 </text>
                             </g>
@@ -1422,17 +1456,17 @@ const TrainingResultsUI = ({
                         <div className="overflow-x-auto overflow-y-auto max-h-[600px] pr-2">
                             <table className="min-w-full divide-y divide-gray-200 text-sm">
                                 <thead className="sticky top-0 bg-white dark:bg-[#1e1e2e] z-10 shadow-sm">
-                                    <tr className="text-gray-400 font-bold text-left text-xs uppercase tracking-wider">
-                                        <th className="pb-3 bg-white dark:bg-[#1e1e2e]">Cuando</th>
-                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Estrellas</th>
-                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Puntuación</th>
-                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Velocidad</th>
-                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Precisión</th>
-                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Escritas</th>
-                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Acertadas</th>
-                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Erradas</th>
-                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Duración</th>
-                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Ver</th>
+                                    <tr className="text-gray-400 font-bold text-xs uppercase tracking-wider">
+                                        <th className="py-3 px-4 text-left bg-white dark:bg-[#1e1e2e]">Cuando</th>
+                                        <th className="py-3 px-4 text-center bg-white dark:bg-[#1e1e2e]">Estrellas</th>
+                                        <th className="py-3 px-4 text-center bg-white dark:bg-[#1e1e2e]">Puntuación</th>
+                                        <th className="py-3 px-4 text-center bg-white dark:bg-[#1e1e2e]">Velocidad</th>
+                                        <th className="py-3 px-4 text-center bg-white dark:bg-[#1e1e2e]">Precisión</th>
+                                        <th className="py-3 px-4 text-center bg-white dark:bg-[#1e1e2e]">Escritas</th>
+                                        <th className="py-3 px-4 text-center bg-white dark:bg-[#1e1e2e]">Acertadas</th>
+                                        <th className="py-3 px-4 text-center bg-white dark:bg-[#1e1e2e]">Erradas</th>
+                                        <th className="py-3 px-4 text-center bg-white dark:bg-[#1e1e2e]">Duración</th>
+                                        <th className="py-3 px-4 text-center bg-white dark:bg-[#1e1e2e]">Ver</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -1440,18 +1474,18 @@ const TrainingResultsUI = ({
                                         const totalWritten = (att.correctChars ?? 0) + (att.errorChars ?? 0);
                                         return (
                                             <tr key={att.id || index} className="text-gray-700 hover:bg-gray-50/50">
-                                                <td className="py-3 font-medium text-gray-500">{att.timestamp}</td>
-                                                <td className="py-3 text-center">
+                                                <td className="py-3 px-4 text-left font-medium text-gray-500">{att.timestamp}</td>
+                                                <td className="py-3 px-4 text-center">
                                                     <div className="flex justify-center text-yellow-400">
                                                         {[1,2,3,4,5].map(starNum => (
                                                             <Star key={starNum} className={`w-4 h-4 ${starNum <= att.stars ? 'fill-yellow-400' : 'text-gray-200'}`} />
                                                         ))}
                                                     </div>
                                                 </td>
-                                                <td className="py-3 text-center font-bold text-gray-800 tabular-nums">
+                                                <td className="py-3 px-4 text-center font-bold text-gray-800 tabular-nums">
                                                     {Math.round(att.wpm * (att.precision/100) * 100)}
                                                 </td>
-                                                <td className="py-3 text-center font-semibold text-gray-900 tabular-nums">
+                                                <td className="py-3 px-4 text-center font-semibold text-gray-900 tabular-nums">
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                                                         att.wpm === maxSpeed 
                                                             ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/30' 
@@ -1460,11 +1494,11 @@ const TrainingResultsUI = ({
                                                         {Math.round(att.wpm)} ppm
                                                     </span>
                                                 </td>
-                                                <td className="py-3 text-center font-medium text-green-600 tabular-nums">{Math.round(att.precision)}%</td>
-                                                <td className="py-3 text-center font-semibold text-slate-700 tabular-nums">{totalWritten}</td>
-                                                <td className="py-3 text-center font-semibold text-green-600 tabular-nums">{att.correctChars ?? 0}</td>
-                                                <td className="py-3 text-center font-semibold text-red-500 tabular-nums">{att.errorChars ?? 0}</td>
-                                                <td className="py-3 text-center font-mono text-gray-600 tabular-nums">
+                                                <td className="py-3 px-4 text-center font-medium text-green-600 tabular-nums">{Math.round(att.precision)}%</td>
+                                                <td className="py-3 px-4 text-center font-semibold text-slate-700 tabular-nums">{totalWritten}</td>
+                                                <td className="py-3 px-4 text-center font-semibold text-green-600 tabular-nums">{att.correctChars ?? 0}</td>
+                                                <td className="py-3 px-4 text-center font-semibold text-red-500 tabular-nums">{att.errorChars ?? 0}</td>
+                                                <td className="py-3 px-4 text-center font-mono text-gray-600 tabular-nums">
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                                                         att.duration === minDuration 
                                                             ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/30' 
@@ -1473,7 +1507,7 @@ const TrainingResultsUI = ({
                                                         {formatDur(att.duration)}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 text-center">
+                                                <td className="py-3 px-4 text-center">
                                                     <button onClick={() => onPlayReplay(att)} className="text-blue-500 hover:text-blue-700">
                                                         <Play className="w-4 h-4 mx-auto" />
                                                     </button>
