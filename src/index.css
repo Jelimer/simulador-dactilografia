@@ -330,3 +330,8 @@
       box-shadow: 0 0 4px rgba(59, 130, 246, 0.2);
   }
 }
+
+/* Números tabulares para evitar oscilaciones horizontales */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

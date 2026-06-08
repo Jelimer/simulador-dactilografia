@@ -683,7 +683,7 @@ const Simulador = () => {
                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                     <div className="flex justify-between items-center mb-4 bg-gray-50 p-4 rounded border">
                         <h3 className="font-bold text-[#002B5C] flex items-center"><BookOpen className="w-5 h-5 mr-2"/> {selectedTextObject.title}</h3>
-                        <div className="text-2xl font-mono font-bold bg-[#002B5C] text-white px-4 py-2 rounded">{formatTime(timeRemaining)}</div>
+                        <div className="text-2xl font-mono font-bold bg-[#002B5C] text-white px-4 py-2 rounded tabular-nums">{formatTime(timeRemaining)}</div>
                     </div>
                     <div className="mb-6 p-4 bg-[#f8fafc] border rounded text-justify font-serif text-gray-800 select-none">
                         {selectedTextObject.content}
@@ -717,20 +717,20 @@ const Simulador = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                         <div className="bg-slate-50 p-4 rounded-lg border">
                             <span className="text-xs text-gray-500 uppercase block font-semibold">Palabras Computadas</span>
-                            <span className="text-2xl font-bold text-slate-800">{results.accountedWords}</span>
+                            <span className="text-2xl font-bold text-slate-800 tabular-nums">{results.accountedWords}</span>
                             <span className="text-[10px] text-gray-400 block">Min. req: {results.requiredWords || requiredWords}</span>
                         </div>
                         <div className="bg-slate-50 p-4 rounded-lg border">
                             <span className="text-xs text-gray-500 uppercase block font-semibold">Velocidad</span>
-                            <span className="text-2xl font-bold text-slate-800">{results.wpm} PPM</span>
+                            <span className="text-2xl font-bold text-slate-800 tabular-nums">{results.wpm} PPM</span>
                         </div>
                         <div className="bg-slate-50 p-4 rounded-lg border">
                             <span className="text-xs text-gray-500 uppercase block font-semibold">Errores Graves</span>
-                            <span className="text-2xl font-bold text-red-600">{results.majorErrors}</span>
+                            <span className="text-2xl font-bold text-red-600 tabular-nums">{results.majorErrors}</span>
                         </div>
                         <div className="bg-slate-50 p-4 rounded-lg border">
                             <span className="text-xs text-gray-500 uppercase block font-semibold">Errores Leves</span>
-                            <span className="text-2xl font-bold text-amber-500">{results.minorErrors}</span>
+                            <span className="text-2xl font-bold text-amber-500 tabular-nums">{results.minorErrors}</span>
                         </div>
                     </div>
 
@@ -878,147 +878,37 @@ const HandsGuide = ({ expectedChar }) => {
 // ==========================================
 // COMPONENTE: GRÁFICOS DE EVOLUCIÓN
 // ==========================================
-const EvolutionCharts = ({ history, currentLessonId }) => {
-    const allAttempts = useMemo(() => {
-        return history.filter(item => item.lessonId === currentLessonId);
-    }, [history, currentLessonId]);
-
-    const [startIndex, setStartIndex] = useState(0);
-    const [endIndex, setEndIndex] = useState(0);
-
-    // Keep range in sync when allAttempts changes
-    useEffect(() => {
-        if (allAttempts.length > 0) {
-            setStartIndex(Math.max(0, allAttempts.length - 5)); // default to last 5, but let them filter everything
-            setEndIndex(allAttempts.length - 1);
-        }
-    }, [allAttempts.length]);
-
-    if (allAttempts.length === 0) {
-        return (
-            <div className="bg-white p-6 rounded-xl border border-gray-200 text-center text-gray-500 text-sm mt-8">
-                Realiza más intentos de esta lección para registrar la gráfica de evolución.
-            </div>
-        );
+// ==========================================
+// COMPONENTE: GRÁFICOS DE EVOLUCIÓN
+// ==========================================
+const EvolutionCharts = ({ filteredAttempts }) => {
+    if (!filteredAttempts || filteredAttempts.length === 0) {
+        return null;
     }
-
-    const filteredAttempts = allAttempts.slice(startIndex, endIndex + 1);
 
     const maxWpm = Math.max(...filteredAttempts.map(a => a.wpm), 30);
 
+    // Prepare points for combined chart
+    const paddingX = 40;
+    const paddingY = 25;
+    const plotW = 520;
+    const plotH = 110;
+
+    const points = filteredAttempts.map((a, idx) => {
+        const x = filteredAttempts.length === 1 
+            ? paddingX + plotW / 2 
+            : paddingX + (idx / (filteredAttempts.length - 1)) * plotW;
+        const y_wpm = (160 - paddingY) - (a.wpm / maxWpm) * plotH;
+        const y_prec = (160 - paddingY) - (a.precision / 100) * plotH;
+        return { x, y_wpm, y_prec, wpm: a.wpm, precision: a.precision, timeOnly: a.timeOnly };
+    });
+
+    const wpmPath = points.length > 1 ? points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y_wpm}`).join(' ') : '';
+    const precPath = points.length > 1 ? points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y_prec}`).join(' ') : '';
+    const wpmAreaPath = points.length > 1 ? `${wpmPath} L ${points[points.length - 1].x} ${160 - paddingY} L ${points[0].x} ${160 - paddingY} Z` : '';
+
     return (
         <div className="w-full space-y-6 mt-8">
-            {/* Filtro de Línea de Tiempo */}
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm w-full flex flex-col">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-4 flex items-center">
-                    <Clock className="w-4 h-4 mr-2 text-blue-600" /> Línea de Tiempo de Intentos
-                </h4>
-                
-                {/* Visual timeline track */}
-                <div className="relative flex items-center justify-between w-full px-6 py-8 bg-slate-50 border border-slate-100 rounded-xl mb-4 select-none">
-                    {/* The track line */}
-                    <div className="absolute left-6 right-6 h-1.5 bg-slate-200 top-1/2 -translate-y-1/2 rounded-full"></div>
-                    
-                    {/* Active range line */}
-                    <div 
-                        className="absolute h-1.5 bg-blue-500 top-1/2 -translate-y-1/2 rounded-full transition-all duration-300"
-                        style={{
-                            left: `${6 + (startIndex / (allAttempts.length - 1 || 1)) * 88}%`,
-                            right: `${6 + ((allAttempts.length - 1 - endIndex) / (allAttempts.length - 1 || 1)) * 88}%`
-                        }}
-                    ></div>
-                    
-                    {allAttempts.map((att, idx) => {
-                        const isActive = idx >= startIndex && idx <= endIndex;
-                        const pct = (idx / (allAttempts.length - 1 || 1)) * 100;
-                        
-                        return (
-                            <div 
-                                key={att.id || idx}
-                                style={{ left: `calc(6% + ${pct * 0.88}%)` }}
-                                className="absolute -translate-x-1/2 top-1/2 -translate-y-1/2 group cursor-pointer z-20"
-                                onClick={() => {
-                                    if (idx < startIndex) {
-                                        setStartIndex(idx);
-                                    } else if (idx > endIndex) {
-                                        setEndIndex(idx);
-                                    } else {
-                                        // Clicked inside active range, adjust closest boundary
-                                        if (idx - startIndex < endIndex - idx) {
-                                            setStartIndex(idx);
-                                        } else {
-                                            setEndIndex(idx);
-                                        }
-                                    }
-                                }}
-                            >
-                                {/* Dot indicator */}
-                                <div 
-                                    className={`w-5 h-5 rounded-full border-2 transition-all duration-300 shadow-sm flex items-center justify-center ${
-                                        isActive 
-                                            ? 'bg-blue-600 border-white scale-125 ring-4 ring-blue-50' 
-                                            : 'bg-white border-slate-300 hover:border-slate-500'
-                                    }`}
-                                >
-                                    <span className={`text-[8px] font-bold ${isActive ? 'text-white' : 'text-slate-400'}`}>
-                                        {idx + 1}
-                                    </span>
-                                </div>
-                                
-                                {/* Tooltip */}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-slate-900 text-white text-[10px] py-2 px-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 shadow-lg whitespace-nowrap z-30 flex flex-col items-center">
-                                    <span className="font-semibold text-yellow-400">{att.timestamp}</span>
-                                    <span className="mt-1 text-gray-200">{att.wpm} PPM | {att.precision}% Precisión</span>
-                                    <span className="text-[8px] text-gray-400 mt-1 font-normal">Clic para ajustar el filtro</span>
-                                    <div className="w-2 h-2 bg-slate-900 rotate-45 absolute top-full -translate-y-1 left-1/2 -translate-x-1/2"></div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-                
-                {/* Controls for fine-tuning range */}
-                <div className="flex flex-wrap items-center justify-between gap-4 text-xs font-semibold text-gray-600">
-                    <div className="flex items-center space-x-2">
-                        <span>Desde:</span>
-                        <select 
-                            value={startIndex} 
-                            onChange={(e) => {
-                                const val = Number(e.target.value);
-                                setStartIndex(val);
-                                if (val > endIndex) setEndIndex(val);
-                            }}
-                            className="border border-slate-200 rounded p-1.5 bg-white text-gray-700 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm cursor-pointer"
-                        >
-                            {allAttempts.map((att, idx) => (
-                                <option key={idx} value={idx}>{idx + 1} - {att.timestamp} ({att.wpm} PPM)</option>
-                            ))}
-                        </select>
-                    </div>
-                    
-                    <div className="text-slate-500 font-bold text-center bg-slate-50 px-3 py-1 rounded-full border border-slate-100 shadow-inner">
-                        Visualizando {filteredAttempts.length} de {allAttempts.length} intentos de esta práctica
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                        <span>Hasta:</span>
-                        <select 
-                            value={endIndex} 
-                            onChange={(e) => {
-                                const val = Number(e.target.value);
-                                setEndIndex(val);
-                                if (val < startIndex) setStartIndex(val);
-                            }}
-                            className="border border-slate-200 rounded p-1.5 bg-white text-gray-700 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm cursor-pointer"
-                        >
-                            {allAttempts.map((att, idx) => (
-                                <option key={idx} value={idx} disabled={idx < startIndex}>{idx + 1} - {att.timestamp} ({att.wpm} PPM)</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-            </div>
-
             {/* Gráficos de Evolución */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                 {/* Gráfico de Velocidad */}
@@ -1032,7 +922,6 @@ const EvolutionCharts = ({ history, currentLessonId }) => {
                             const pctHeight = Math.max(5, (attempt.wpm / maxWpm) * 100);
                             return (
                                 <div key={attempt.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
-                                    {/* Label superior - siempre visible */}
                                     <span 
                                         style={{ bottom: `calc(${pctHeight}% + 4px)` }}
                                         className="absolute text-[10px] font-bold text-slate-700 whitespace-nowrap bg-white/80 px-1 rounded shadow-sm border border-slate-100/50"
@@ -1068,7 +957,6 @@ const EvolutionCharts = ({ history, currentLessonId }) => {
                             const pctHeight = attempt.precision; 
                             return (
                                 <div key={attempt.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
-                                    {/* Label superior - siempre visible */}
                                     <span 
                                         style={{ bottom: `calc(${pctHeight}% + 8px)` }}
                                         className="absolute text-[10px] font-bold text-slate-700 whitespace-nowrap bg-white/80 px-1 rounded shadow-sm border border-slate-100/50 transform -translate-y-1/2"
@@ -1092,6 +980,74 @@ const EvolutionCharts = ({ history, currentLessonId }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Nuevo Gráfico Combinado de Velocidad y Precisión */}
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col w-full">
+                <div className="flex flex-wrap items-center justify-between border-b pb-3 mb-4 gap-2">
+                    <div>
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700">Velocidad y Precisión Combinadas</h4>
+                        <span className="text-[10px] text-slate-400">Evolución comparada de PPM y Precisión (%) en la misma escala temporal</span>
+                    </div>
+                    {/* Leyenda */}
+                    <div className="flex items-center space-x-4 text-xs font-semibold">
+                        <div className="flex items-center space-x-1.5">
+                            <span className="w-3 h-3 bg-[#3e5c76] rounded-full inline-block"></span>
+                            <span className="text-gray-600">Velocidad (PPM)</span>
+                        </div>
+                        <div className="flex items-center space-x-1.5">
+                            <span className="w-3 h-3 bg-[#22c55e] rounded-full inline-block"></span>
+                            <span className="text-gray-600">Precisión (%)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="relative w-full h-44 px-2 select-none overflow-visible">
+                    <svg width="100%" height="100%" viewBox="0 0 600 160" preserveAspectRatio="none" className="overflow-visible">
+                        <defs>
+                            <linearGradient id="speedCombinedGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#3e5c76" stopOpacity="0.12" />
+                                <stop offset="100%" stopColor="#3e5c76" stopOpacity="0.0" />
+                            </linearGradient>
+                        </defs>
+                        
+                        {/* Líneas de Guía Horizontales */}
+                        <line x1={paddingX} y1={paddingY} x2={paddingX + plotW} y2={paddingY} stroke="#f1f5f9" strokeDasharray="3 3" />
+                        <line x1={paddingX} y1={paddingY + plotH / 2} x2={paddingX + plotW} y2={paddingY + plotH / 2} stroke="#f1f5f9" strokeDasharray="3 3" />
+                        <line x1={paddingX} y1={paddingY + plotH} x2={paddingX + plotW} y2={paddingY + plotH} stroke="#e2e8f0" strokeWidth="1" />
+                        
+                        {/* Relleno bajo la línea de velocidad */}
+                        {wpmAreaPath && <path d={wpmAreaPath} fill="url(#speedCombinedGrad)" />}
+                        
+                        {/* Línea de Velocidad */}
+                        {wpmPath && <path d={wpmPath} fill="none" stroke="#3e5c76" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+                        
+                        {/* Línea de Precisión (discontinua y muy sutil) */}
+                        {precPath && <path d={precPath} fill="none" stroke="#22c55e" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.35" />}
+                        
+                        {/* Puntos y etiquetas */}
+                        {points.map((p, idx) => (
+                            <g key={idx}>
+                                {/* Velocidad (Punto azul) */}
+                                <circle cx={p.x} cy={p.y_wpm} r="4" fill="#3e5c76" stroke="#fff" strokeWidth="1.5" />
+                                <text x={p.x} y={p.y_wpm - 8} fontSize="9" fontWeight="bold" fill="#3e5c76" textAnchor="middle" className="font-mono">
+                                    {Math.round(p.wpm)}
+                                </text>
+                                
+                                {/* Precisión (Punto verde) */}
+                                <circle cx={p.x} cy={p.y_prec} r="4.5" fill="#22c55e" stroke="#fff" strokeWidth="1.5" />
+                                <text x={p.x} y={p.y_prec + 13} fontSize="9" fontWeight="bold" fill="#16a34a" textAnchor="middle" className="font-mono">
+                                    {Math.round(p.precision)}%
+                                </text>
+                                
+                                {/* Etiqueta del Eje X (Fecha/Hora) */}
+                                <text x={p.x} y="152" fontSize="9" fill="#94a3b8" textAnchor="middle">
+                                    {p.timeOnly}
+                                </text>
+                            </g>
+                        ))}
+                    </svg>
+                </div>
+            </div>
         </div>
     );
 };
@@ -1099,7 +1055,20 @@ const EvolutionCharts = ({ history, currentLessonId }) => {
 // ==========================================
 // COMPONENTE: PANTALLA DE RESULTADOS DETALLADOS
 // ==========================================
-const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, onPlayReplay }) => {
+const TrainingResultsUI = ({ 
+    metrics, 
+    onRetry, 
+    onNext, 
+    onBack, 
+    lessonAttempts, 
+    onPlayReplay,
+    allAttempts,
+    startIndex,
+    setStartIndex,
+    endIndex,
+    setEndIndex,
+    filteredAttempts
+}) => {
     const bgDark = '#3e5c76'; 
     const circleYellow = '#f4b41a';
 
@@ -1109,6 +1078,16 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
         const s = Math.floor(secs % 60).toString().padStart(2, '0');
         return `${m}:${s}`;
     };
+
+    const minDuration = useMemo(() => {
+        if (!lessonAttempts || lessonAttempts.length === 0) return null;
+        return Math.min(...lessonAttempts.map(att => att.duration || 999999));
+    }, [lessonAttempts]);
+
+    const maxSpeed = useMemo(() => {
+        if (!lessonAttempts || lessonAttempts.length === 0) return null;
+        return Math.max(...lessonAttempts.map(att => att.wpm || 0));
+    }, [lessonAttempts]);
 
     if (!metrics) {
         return (
@@ -1231,9 +1210,9 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                                 {precisionTicks}
                             </svg>
                             <div className="z-10 text-center">
-                                <div className="text-3xl font-black">{Math.round(metrics.precision)}%</div>
+                                <div className="text-3xl font-black tabular-nums">{Math.round(metrics.precision)}%</div>
                                 <div className="text-[9px] uppercase tracking-widest mt-0.5 text-white/70">precisión real</div>
-                                <div className="text-[10px] font-semibold text-yellow-400/90">{Math.round(metrics.precision)}%</div>
+                                <div className="text-[10px] font-semibold text-yellow-400/90 tabular-nums">{Math.round(metrics.precision)}%</div>
                             </div>
                             <div className="absolute -bottom-8 font-bold uppercase tracking-widest text-[11px] text-gray-300">precisión</div>
                         </div>
@@ -1245,7 +1224,7 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                             {durationTicks}
                         </svg>
                         <div className="z-10 text-center">
-                            <div className="text-2xl font-bold">{formatDur(metrics.duration)}</div>
+                            <div className="text-2xl font-bold tabular-nums">{formatDur(metrics.duration)}</div>
                             <div className="text-[8px] uppercase tracking-widest text-white/60">min:segundos</div>
                         </div>
                         <div className="absolute -bottom-10 font-bold uppercase tracking-widest text-[11px] text-gray-300">duración</div>
@@ -1262,7 +1241,7 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                                 {speedTicks}
                             </svg>
                             <div className="z-10 text-center">
-                                <div className="text-3xl font-black">{Math.round(metrics.wpm)}</div>
+                                <div className="text-3xl font-black tabular-nums">{Math.round(metrics.wpm)}</div>
                                 <div className="text-[9px] uppercase tracking-widest mt-0.5 text-white/70">ppm</div>
                             </div>
                             <div className="absolute -bottom-8 font-bold uppercase tracking-widest text-[11px] text-gray-300">velocidad</div>
@@ -1278,7 +1257,7 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
 
                 {/* Puntuación */}
                 <div className="mt-14 text-center">
-                    <div className="text-5xl font-black tracking-tight">
+                    <div className="text-5xl font-black tracking-tight tabular-nums">
                         {Math.round((metrics.wpm * (metrics.precision / 100) * 100))}
                     </div>
                     <div className="h-0.5 w-48 bg-white/20 mx-auto my-1.5"></div>
@@ -1317,6 +1296,118 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                     </button>
                 </div>
 
+                {/* Filtro de Línea de Tiempo de Intentos (Visualización e interactividad premium) */}
+                {allAttempts && allAttempts.length > 0 && (
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm w-full flex flex-col mt-8">
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-4 flex items-center">
+                            <Clock className="w-4 h-4 mr-2 text-blue-600" /> Línea de Tiempo de Intentos
+                        </h4>
+                        
+                        {/* Visual timeline track */}
+                        <div className="relative flex items-center justify-between w-full px-6 py-8 bg-slate-50 border border-slate-100 rounded-xl mb-4 select-none">
+                            {/* The track line */}
+                            <div className="absolute left-6 right-6 h-1.5 bg-slate-200 top-1/2 -translate-y-1/2 rounded-full"></div>
+                            
+                            {/* Active range line */}
+                            <div 
+                                className="absolute h-1.5 bg-blue-500 top-1/2 -translate-y-1/2 rounded-full transition-all duration-300"
+                                style={{
+                                    left: `${6 + (startIndex / (allAttempts.length - 1 || 1)) * 88}%`,
+                                    right: `${6 + ((allAttempts.length - 1 - endIndex) / (allAttempts.length - 1 || 1)) * 88}%`
+                                }}
+                            ></div>
+                            
+                            {allAttempts.map((att, idx) => {
+                                const isActive = idx >= startIndex && idx <= endIndex;
+                                const pct = (idx / (allAttempts.length - 1 || 1)) * 100;
+                                
+                                return (
+                                    <div 
+                                        key={att.id || idx}
+                                        style={{ left: `calc(6% + ${pct * 0.88}%)` }}
+                                        className="absolute -translate-x-1/2 top-1/2 -translate-y-1/2 group cursor-pointer z-20"
+                                        onClick={() => {
+                                            if (idx < startIndex) {
+                                                setStartIndex(idx);
+                                            } else if (idx > endIndex) {
+                                                setEndIndex(idx);
+                                            } else {
+                                                if (idx - startIndex < endIndex - idx) {
+                                                    setStartIndex(idx);
+                                                } else {
+                                                    setEndIndex(idx);
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        {/* Dot indicator */}
+                                        <div 
+                                            className={`w-5 h-5 rounded-full border-2 transition-all duration-300 shadow-sm flex items-center justify-center ${
+                                                isActive 
+                                                    ? 'bg-blue-600 border-white scale-125 ring-4 ring-blue-50' 
+                                                    : 'bg-white border-slate-300 hover:border-slate-500'
+                                            }`}
+                                        >
+                                            <span className={`text-[8px] font-bold ${isActive ? 'text-white' : 'text-slate-400'}`}>
+                                                {idx + 1}
+                                            </span>
+                                        </div>
+                                        
+                                        {/* Tooltip */}
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-slate-900 text-white text-[10px] py-2 px-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 shadow-lg whitespace-nowrap z-30 flex flex-col items-center">
+                                            <span className="font-semibold text-yellow-400">{att.timestamp}</span>
+                                            <span className="mt-1 text-gray-200">{att.wpm} PPM | {att.precision}% Precisión</span>
+                                            <span className="text-[8px] text-gray-400 mt-1 font-normal">Clic para ajustar el filtro</span>
+                                            <div className="w-2 h-2 bg-slate-900 rotate-45 absolute top-full -translate-y-1 left-1/2 -translate-x-1/2"></div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        
+                        {/* Controls for fine-tuning range */}
+                        <div className="flex flex-wrap items-center justify-between gap-4 text-xs font-semibold text-gray-600">
+                            <div className="flex items-center space-x-2">
+                                <span>Desde:</span>
+                                <select 
+                                    value={startIndex} 
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setStartIndex(val);
+                                        if (val > endIndex) setEndIndex(val);
+                                    }}
+                                    className="border border-slate-200 rounded p-1.5 bg-white text-gray-700 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm cursor-pointer"
+                                >
+                                    {allAttempts.map((att, idx) => (
+                                        <option key={idx} value={idx}>{idx + 1} - {att.timestamp} ({att.wpm} PPM)</option>
+                                    ))}
+                                </select>
+                            </div>
+                            
+                            <div className="text-slate-500 font-bold text-center bg-slate-50 px-3 py-1 rounded-full border border-slate-100 shadow-inner">
+                                Visualizando {filteredAttempts.length} de {allAttempts.length} intentos de esta práctica
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                                <span>Hasta:</span>
+                                <select 
+                                    value={endIndex} 
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setEndIndex(val);
+                                        if (val < startIndex) setStartIndex(val);
+                                    }}
+                                    className="border border-slate-200 rounded p-1.5 bg-white text-gray-700 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm cursor-pointer"
+                                >
+                                    {allAttempts.map((att, idx) => (
+                                        <option key={idx} value={idx} disabled={idx < startIndex}>{idx + 1} - {att.timestamp} ({att.wpm} PPM)</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mt-8">
                     <h4 className="text-gray-600 font-bold tracking-wider text-xs mb-4 uppercase text-center">
                         Tus intentos anteriores en esta lección:
@@ -1325,20 +1416,20 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                     {lessonAttempts.length === 0 ? (
                         <p className="text-center text-gray-400 text-sm py-4">No hay registros previos para esta lección.</p>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto overflow-y-auto max-h-[600px] pr-2">
                             <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                <thead>
+                                <thead className="sticky top-0 bg-white dark:bg-[#1e1e2e] z-10 shadow-sm">
                                     <tr className="text-gray-400 font-bold text-left text-xs uppercase tracking-wider">
-                                        <th className="pb-3">Cuando</th>
-                                        <th className="pb-3 text-center">Estrellas</th>
-                                        <th className="pb-3 text-center">Puntuación</th>
-                                        <th className="pb-3 text-center">Velocidad</th>
-                                        <th className="pb-3 text-center">Precisión</th>
-                                        <th className="pb-3 text-center">Escritas</th>
-                                        <th className="pb-3 text-center">Acertadas</th>
-                                        <th className="pb-3 text-center">Erradas</th>
-                                        <th className="pb-3 text-center">Duración</th>
-                                        <th className="pb-3 text-center">Ver</th>
+                                        <th className="pb-3 bg-white dark:bg-[#1e1e2e]">Cuando</th>
+                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Estrellas</th>
+                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Puntuación</th>
+                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Velocidad</th>
+                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Precisión</th>
+                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Escritas</th>
+                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Acertadas</th>
+                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Erradas</th>
+                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Duración</th>
+                                        <th className="pb-3 text-center bg-white dark:bg-[#1e1e2e]">Ver</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -1354,15 +1445,31 @@ const TrainingResultsUI = ({ metrics, onRetry, onNext, onBack, lessonAttempts, o
                                                         ))}
                                                     </div>
                                                 </td>
-                                                <td className="py-3 text-center font-bold text-gray-800">
+                                                <td className="py-3 text-center font-bold text-gray-800 tabular-nums">
                                                     {Math.round(att.wpm * (att.precision/100) * 100)}
                                                 </td>
-                                                <td className="py-3 text-center font-semibold text-gray-900">{Math.round(att.wpm)} ppm</td>
-                                                <td className="py-3 text-center font-medium text-green-600">{Math.round(att.precision)}%</td>
-                                                <td className="py-3 text-center font-semibold text-slate-700">{totalWritten}</td>
-                                                <td className="py-3 text-center font-semibold text-green-600">{att.correctChars ?? 0}</td>
-                                                <td className="py-3 text-center font-semibold text-red-500">{att.errorChars ?? 0}</td>
-                                                <td className="py-3 text-center font-mono text-gray-600">{formatDur(att.duration)}</td>
+                                                <td className="py-3 text-center font-semibold text-gray-900 tabular-nums">
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                                                        att.wpm === maxSpeed 
+                                                            ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/30' 
+                                                            : ''
+                                                    }`}>
+                                                        {Math.round(att.wpm)} ppm
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 text-center font-medium text-green-600 tabular-nums">{Math.round(att.precision)}%</td>
+                                                <td className="py-3 text-center font-semibold text-slate-700 tabular-nums">{totalWritten}</td>
+                                                <td className="py-3 text-center font-semibold text-green-600 tabular-nums">{att.correctChars ?? 0}</td>
+                                                <td className="py-3 text-center font-semibold text-red-500 tabular-nums">{att.errorChars ?? 0}</td>
+                                                <td className="py-3 text-center font-mono text-gray-600 tabular-nums">
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                                                        att.duration === minDuration 
+                                                            ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/30' 
+                                                            : ''
+                                                    }`}>
+                                                        {formatDur(att.duration)}
+                                                    </span>
+                                                </td>
                                                 <td className="py-3 text-center">
                                                     <button onClick={() => onPlayReplay(att)} className="text-blue-500 hover:text-blue-700">
                                                         <Play className="w-4 h-4 mx-auto" />
@@ -1959,6 +2066,31 @@ const Entrenamiento = ({ history, onAddHistory }) => {
     const [ambientEnabled, setAmbientEnabled] = useState(false);
     const ambientRef = useRef(null);
 
+    // Timeline filter states
+    const allAttempts = useMemo(() => {
+        return history.filter(item => item.lessonId === lessonId);
+    }, [history, lessonId]);
+
+    const [startIndex, setStartIndex] = useState(0);
+    const [endIndex, setEndIndex] = useState(0);
+
+    // Keep range in sync when allAttempts changes
+    useEffect(() => {
+        if (allAttempts.length > 0) {
+            setStartIndex(Math.max(0, allAttempts.length - 5)); // default to last 5
+            setEndIndex(allAttempts.length - 1);
+        }
+    }, [allAttempts.length]);
+
+    const filteredAttempts = useMemo(() => {
+        return allAttempts.slice(startIndex, endIndex + 1);
+    }, [allAttempts, startIndex, endIndex]);
+
+    // Reverse chronological order for the table
+    const filteredTableAttempts = useMemo(() => {
+        return [...filteredAttempts].reverse();
+    }, [filteredAttempts]);
+
     // Ambient typing sound effect
     useEffect(() => {
         if (phase === 'typing' && ambientEnabled) {
@@ -2151,10 +2283,8 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         }
     };
 
-    // Filtrar intentos previos solo de la lección seleccionada (más reciente a más antiguo)
-    const currentLessonAttempts = useMemo(() => {
-        return [...history].filter(item => item.lessonId === lessonId).reverse();
-    }, [history, lessonId]);
+    // (Ya calculado en la sección superior de estados)
+    const currentLessonAttempts = filteredTableAttempts;
 
     const handlePlayReplay = (attempt) => {
         setReplayData(attempt);
@@ -2323,12 +2453,24 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     <div className="flex justify-between w-full mb-8 text-gray-500 font-bold uppercase tracking-wider text-xs border-b pb-4">
                         <span className="text-blue-700">Introducción de nuevas teclas {introStep === 3 ? '/ Bien hecho' : ''}</span>
                         <div className="flex items-center space-x-4">
-                            <button 
-                                onClick={() => setSoundMuted(!soundMuted)}
-                                className="text-gray-400 hover:text-gray-700"
-                            >
-                                {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                            </button>
+                            <div className="flex items-center space-x-2 bg-slate-50 dark:bg-black/20 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm select-none">
+                                {soundMuted ? (
+                                    <VolumeX className="w-3.5 h-3.5 text-gray-400" />
+                                ) : (
+                                    <Volume2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                )}
+                                <div 
+                                    onClick={() => setSoundMuted(!soundMuted)}
+                                    className="relative w-8 h-4.5 rounded-full transition-colors cursor-pointer flex items-center border border-transparent"
+                                    style={{ backgroundColor: !soundMuted ? '#3b82f6' : '#cbd5e1' }}
+                                    title={soundMuted ? "Activar sonido de teclas" : "Silenciar teclas"}
+                                >
+                                    <div 
+                                        className="absolute w-3.5 h-3.5 bg-white rounded-full transition-transform shadow-sm"
+                                        style={{ transform: `translateX(${!soundMuted ? '14px' : '2px'})` }}
+                                    ></div>
+                                </div>
+                            </div>
                             <button onClick={() => setPhase('menu')} className="hover:text-red-500 font-semibold">Abandonar</button>
                         </div>
                     </div>
@@ -2400,24 +2542,44 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     <div className="flex justify-between w-full mb-6 text-gray-500 font-bold uppercase tracking-wider text-xs border-b pb-4">
                         <span className="text-blue-700">Lección {lesson.id}: {lesson.title}</span>
                         <div className="flex items-center space-x-4">
-                            <button 
-                                onClick={() => setAmbientEnabled(!ambientEnabled)}
-                                className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
-                                    ambientEnabled 
-                                        ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' 
-                                        : 'text-gray-400 hover:text-gray-600 border border-transparent'
-                                }`}
-                                title={ambientEnabled ? 'Desactivar ruido ambiental' : 'Activar ruido ambiental (simula sala de examen)'}
-                            >
-                                <Users className="w-3.5 h-3.5" />
-                                {ambientEnabled ? 'Sala ON' : 'Sala'}
-                            </button>
-                            <button 
-                                onClick={() => setSoundMuted(!soundMuted)}
-                                className="text-gray-400 hover:text-gray-700"
-                            >
-                                {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                            </button>
+                            <div className="flex items-center space-x-4 bg-slate-50 dark:bg-black/20 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm select-none">
+                                {/* Switch de Sonido */}
+                                <div className="flex items-center space-x-2">
+                                    {soundMuted ? (
+                                        <VolumeX className="w-3.5 h-3.5 text-gray-400" />
+                                    ) : (
+                                        <Volume2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                    )}
+                                    <div 
+                                        onClick={() => setSoundMuted(!soundMuted)}
+                                        className="relative w-8 h-4.5 rounded-full transition-colors cursor-pointer flex items-center border border-transparent"
+                                        style={{ backgroundColor: !soundMuted ? '#3b82f6' : '#cbd5e1' }}
+                                        title={soundMuted ? "Activar sonido de teclas" : "Silenciar teclas"}
+                                    >
+                                        <div 
+                                            className="absolute w-3.5 h-3.5 bg-white rounded-full transition-transform shadow-sm"
+                                            style={{ transform: `translateX(${!soundMuted ? '14px' : '2px'})` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                <div className="w-px h-3.5 bg-gray-200 dark:bg-white/10"></div>
+                                {/* Switch de Sala Examen */}
+                                <div className="flex items-center space-x-2">
+                                    <Users className={`w-3.5 h-3.5 ${ambientEnabled ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`} />
+                                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold">Sala</span>
+                                    <div 
+                                        onClick={() => setAmbientEnabled(!ambientEnabled)}
+                                        className="relative w-8 h-4.5 rounded-full transition-colors cursor-pointer flex items-center border border-transparent"
+                                        style={{ backgroundColor: ambientEnabled ? '#6366f1' : '#cbd5e1' }}
+                                        title={ambientEnabled ? "Desactivar ruido ambiental" : "Activar ruido ambiental (sala examen)"}
+                                    >
+                                        <div 
+                                            className="absolute w-3.5 h-3.5 bg-white rounded-full transition-transform shadow-sm"
+                                            style={{ transform: `translateX(${ambientEnabled ? '14px' : '2px'})` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
                             <button onClick={() => setPhase('menu')} className="hover:text-red-500 font-semibold">Abandonar</button>
                         </div>
                     </div>
@@ -2477,10 +2639,16 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                             }
                         }} 
                         onBack={() => setPhase('menu')}
-                        lessonAttempts={currentLessonAttempts} 
-                        onPlayReplay={handlePlayReplay} 
+                        lessonAttempts={filteredTableAttempts} 
+                        onPlayReplay={handlePlayReplay}
+                        allAttempts={allAttempts}
+                        startIndex={startIndex}
+                        setStartIndex={setStartIndex}
+                        endIndex={endIndex}
+                        setEndIndex={setEndIndex}
+                        filteredAttempts={filteredAttempts}
                     />
-                    <EvolutionCharts history={history} currentLessonId={lessonId} />
+                    <EvolutionCharts filteredAttempts={filteredAttempts} />
                 </div>
             )}
 
@@ -2512,11 +2680,11 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     <div className="grid grid-cols-3 gap-6 max-w-md mx-auto mb-6">
                         <div className="p-4 bg-blue-50 rounded-xl border">
                             <span className="block text-xs text-gray-500 uppercase font-semibold">Velocidad</span>
-                            <strong className="text-xl text-blue-700">{replayData.wpm} PPM</strong>
+                            <strong className="text-xl text-blue-700 tabular-nums">{replayData.wpm} PPM</strong>
                         </div>
                         <div className="p-4 bg-green-50 rounded-xl border">
                             <span className="block text-xs text-gray-500 uppercase font-semibold">Precisión</span>
-                            <strong className="text-xl text-green-700">{replayData.precision}%</strong>
+                            <strong className="text-xl text-green-700 tabular-nums">{replayData.precision}%</strong>
                         </div>
                         <div className="p-4 bg-purple-50 rounded-xl border">
                             <span className="block text-xs text-gray-500 uppercase font-semibold">Duración</span>
@@ -3086,6 +3254,19 @@ const PreparacionTeorica = () => {
         }
     };
 
+    const handleProgressBarClick = (e) => {
+        if (!mp3Url) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const width = rect.width;
+        const max = displayProgressMax || 100;
+        const newTime = Math.max(0, Math.min(max, (clickX / width) * max));
+        setAudioCurrentTime(newTime);
+        if (audioRef.current) {
+            audioRef.current.currentTime = newTime;
+        }
+    };
+
     const execFormat = (command, value = null) => {
         document.execCommand(command, false, value);
         if (editorRef.current) {
@@ -3586,19 +3767,23 @@ const PreparacionTeorica = () => {
 
                     {/* Progress Bar & Seek Slider */}
                     <div className="flex items-center space-x-4 w-full bg-black/20 p-3 rounded-lg border border-white/5">
-                        <span className="text-xs font-mono select-none">{formatAudioTime(displayCurrentTime)}</span>
+                        <span className="text-xs font-mono select-none tabular-nums">{formatAudioTime(displayCurrentTime)}</span>
                         
-                        <input 
-                            type="range"
-                            min="0"
-                            max={displayProgressMax || 100}
-                            value={displayProgressValue}
-                            onChange={handleAudioSeek}
-                            disabled={!mp3Url}
-                            className="flex-1 accent-yellow-400 h-1.5 rounded-lg bg-white/20 appearance-none cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed"
-                        />
+                        <div 
+                            onClick={handleProgressBarClick} 
+                            className={`group relative flex-1 h-2 bg-white/20 rounded-full cursor-pointer flex items-center ${!mp3Url ? 'opacity-55 cursor-not-allowed pointer-events-none' : ''}`}
+                        >
+                            <div 
+                                className="absolute top-0 left-0 h-full bg-yellow-400 rounded-full" 
+                                style={{ width: `${(displayProgressValue / (displayProgressMax || 100)) * 100}%` }}
+                            ></div>
+                            <div 
+                                className="absolute w-3.5 h-3.5 bg-white rounded-full shadow border-2 border-yellow-400 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" 
+                                style={{ left: `${(displayProgressValue / (displayProgressMax || 100)) * 100}%` }}
+                            ></div>
+                        </div>
                         
-                        <span className="text-xs font-mono select-none">{formatAudioTime(displayDuration)}</span>
+                        <span className="text-xs font-mono select-none tabular-nums">{formatAudioTime(displayDuration)}</span>
                     </div>
                 </div>
             )}
