@@ -887,25 +887,26 @@ const EvolutionCharts = ({ filteredAttempts }) => {
     }
 
     const maxWpm = Math.max(...filteredAttempts.map(a => a.wpm), 30);
+    const maxScale = Math.max(100, maxWpm);
 
     // Prepare points for combined chart
     const paddingX = 40;
-    const paddingY = 25;
+    const paddingY = 30;
     const plotW = 520;
-    const plotH = 110;
+    const plotH = 260; // 320 height - 2*30 padding
 
     const points = filteredAttempts.map((a, idx) => {
         const x = filteredAttempts.length === 1 
             ? paddingX + plotW / 2 
             : paddingX + (idx / (filteredAttempts.length - 1)) * plotW;
-        const y_wpm = (160 - paddingY) - (a.wpm / maxWpm) * plotH;
-        const y_prec = (160 - paddingY) - (a.precision / 100) * plotH;
+        const y_wpm = (320 - paddingY) - (a.wpm / maxScale) * plotH;
+        const y_prec = (320 - paddingY) - (a.precision / maxScale) * plotH;
         return { x, y_wpm, y_prec, wpm: a.wpm, precision: a.precision, timeOnly: a.timeOnly };
     });
 
     const wpmPath = points.length > 1 ? points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y_wpm}`).join(' ') : '';
     const precPath = points.length > 1 ? points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y_prec}`).join(' ') : '';
-    const wpmAreaPath = points.length > 1 ? `${wpmPath} L ${points[points.length - 1].x} ${160 - paddingY} L ${points[0].x} ${160 - paddingY} Z` : '';
+    const wpmAreaPath = points.length > 1 ? `${wpmPath} L ${points[points.length - 1].x} ${320 - paddingY} L ${points[0].x} ${320 - paddingY} Z` : '';
 
     return (
         <div className="w-full space-y-6 mt-8">
@@ -1001,8 +1002,8 @@ const EvolutionCharts = ({ filteredAttempts }) => {
                     </div>
                 </div>
                 
-                <div className="relative w-full h-44 px-2 select-none overflow-visible">
-                    <svg width="100%" height="100%" viewBox="0 0 600 160" preserveAspectRatio="none" className="overflow-visible">
+                <div className="relative w-full h-[320px] px-2 select-none overflow-visible">
+                    <svg width="100%" height="100%" viewBox="0 0 600 320" preserveAspectRatio="none" className="overflow-visible">
                         <defs>
                             <linearGradient id="speedCombinedGrad" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor="#3e5c76" stopOpacity="0.12" />
@@ -1012,7 +1013,9 @@ const EvolutionCharts = ({ filteredAttempts }) => {
                         
                         {/* Líneas de Guía Horizontales */}
                         <line x1={paddingX} y1={paddingY} x2={paddingX + plotW} y2={paddingY} stroke="#f1f5f9" strokeDasharray="3 3" />
-                        <line x1={paddingX} y1={paddingY + plotH / 2} x2={paddingX + plotW} y2={paddingY + plotH / 2} stroke="#f1f5f9" strokeDasharray="3 3" />
+                        <line x1={paddingX} y1={paddingY + plotH * 0.25} x2={paddingX + plotW} y2={paddingY + plotH * 0.25} stroke="#f1f5f9" strokeDasharray="3 3" />
+                        <line x1={paddingX} y1={paddingY + plotH * 0.5} x2={paddingX + plotW} y2={paddingY + plotH * 0.5} stroke="#f1f5f9" strokeDasharray="3 3" />
+                        <line x1={paddingX} y1={paddingY + plotH * 0.75} x2={paddingX + plotW} y2={paddingY + plotH * 0.75} stroke="#f1f5f9" strokeDasharray="3 3" />
                         <line x1={paddingX} y1={paddingY + plotH} x2={paddingX + plotW} y2={paddingY + plotH} stroke="#e2e8f0" strokeWidth="1" />
                         
                         {/* Relleno bajo la línea de velocidad */}
@@ -1022,7 +1025,7 @@ const EvolutionCharts = ({ filteredAttempts }) => {
                         {wpmPath && <path d={wpmPath} fill="none" stroke="#3e5c76" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
                         
                         {/* Línea de Precisión (discontinua y muy sutil) */}
-                        {precPath && <path d={precPath} fill="none" stroke="#22c55e" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.35" />}
+                        {precPath && <path d={precPath} fill="none" stroke="#22c55e" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.45" />}
                         
                         {/* Puntos y etiquetas */}
                         {points.map((p, idx) => (
@@ -1035,12 +1038,12 @@ const EvolutionCharts = ({ filteredAttempts }) => {
                                 
                                 {/* Precisión (Punto verde) */}
                                 <circle cx={p.x} cy={p.y_prec} r="4.5" fill="#22c55e" stroke="#fff" strokeWidth="1.5" />
-                                <text x={p.x} y={p.y_prec + 13} fontSize="9" fontWeight="bold" fill="#16a34a" textAnchor="middle" className="font-mono">
+                                <text x={p.x} y={p.y_prec - 8} fontSize="9" fontWeight="bold" fill="#16a34a" textAnchor="middle" className="font-mono">
                                     {Math.round(p.precision)}%
                                 </text>
                                 
                                 {/* Etiqueta del Eje X (Fecha/Hora) */}
-                                <text x={p.x} y="152" fontSize="9" fill="#94a3b8" textAnchor="middle">
+                                <text x={p.x} y="312" fontSize="9" fill="#94a3b8" textAnchor="middle">
                                     {p.timeOnly}
                                 </text>
                             </g>
