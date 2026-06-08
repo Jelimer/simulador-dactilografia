@@ -1453,7 +1453,7 @@ const TrainingResultsUI = ({
                     {lessonAttempts.length === 0 ? (
                         <p className="text-center text-gray-400 text-sm py-4">No hay registros previos para esta lección.</p>
                     ) : (
-                        <div className="overflow-x-auto overflow-y-auto max-h-[600px] pr-2">
+                        <div className="overflow-x-auto overflow-y-auto max-h-[720px] pr-2">
                             <table className="min-w-full divide-y divide-gray-200 text-sm">
                                 <thead className="sticky top-0 bg-white dark:bg-[#1e1e2e] z-10 shadow-sm">
                                     <tr className="text-gray-400 font-bold text-xs uppercase tracking-wider">
@@ -2114,7 +2114,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
     // Keep range in sync when allAttempts changes
     useEffect(() => {
         if (allAttempts.length > 0) {
-            setStartIndex(Math.max(0, allAttempts.length - 5)); // default to last 5
+            setStartIndex(Math.max(0, allAttempts.length - 15)); // default to last 15
             setEndIndex(allAttempts.length - 1);
         }
     }, [allAttempts.length]);
