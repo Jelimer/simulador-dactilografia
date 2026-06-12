@@ -3960,3 +3960,5 @@ export default function App() {
         </div>
     );
 }
+
+// Despliegue forzado sin teclado holográfico
