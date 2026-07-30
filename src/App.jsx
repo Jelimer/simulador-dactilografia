@@ -1588,6 +1588,8 @@ const HandsKeyboardIntro = ({ step, lessonId }) => {
         const isU = char === 'u';
         const isE = char === 'e';
         const isI = char === 'i';
+        const isW = char === 'w';
+        const isO = char === 'o';
         
         let isHighlighted = false;
         if (lessonId === 5) {
@@ -1614,6 +1616,10 @@ const HandsKeyboardIntro = ({ step, lessonId }) => {
             if (step === 1 && isE) isHighlighted = true;
             if (step === 2 && isI) isHighlighted = true;
             if (step === 3 && (isE || isI)) isHighlighted = true;
+        } else if (lessonId === 34) {
+            if (step === 1 && isW) isHighlighted = true;
+            if (step === 2 && isO) isHighlighted = true;
+            if (step === 3 && (isW || isO)) isHighlighted = true;
         } else {
             if (step === 1 && isF) isHighlighted = true;
             if (step === 2 && isJ) isHighlighted = true;
@@ -1770,7 +1776,7 @@ const HandsKeyboardIntro = ({ step, lessonId }) => {
                         style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
                     />
                 )
-            ) : lessonId === 9 ? (
+            ) : (lessonId === 9 || lessonId === 34) ? (
                 // Left Ring Finger Highlight in Step 1 or 3
                 (step === 1 || step === 3) && (
                     <path 
@@ -1821,7 +1827,7 @@ const HandsKeyboardIntro = ({ step, lessonId }) => {
                         style={{ filter: 'drop-shadow(0 2px 4px rgba(37,99,235,0.4))' }}
                     />
                 )
-            ) : lessonId === 9 ? (
+            ) : (lessonId === 9 || lessonId === 34) ? (
                 // Right Ring Finger Highlight in Step 2 or 3
                 (step === 2 || step === 3) && (
                     <path 
