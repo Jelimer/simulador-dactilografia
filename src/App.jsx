@@ -336,7 +336,7 @@ const TRAINING_LESSONS = [
     { id: 43, title: 'Práctica: t & p', text: 'rata roto ropa ropero patata piña otoño peñota pelota frita prehistoria prototipo protesta propuesta toño grafito topo', section: 'Fila superior' },
     // 44: Juego Fila superior - omitido
     { id: 45, title: '¡Piensa ideas, no en letras!', text: 'escribir sin mirar el teclado permite pensar en las ideas', section: 'Fila superior' },
-    { id: 46, title: 'Revisión Base + Fila superior', text: 'qwert yuiop asdfg hjklñ qwert yuiop asdfg hjklñ qwert yuiop', section: 'Fila superior' },
+    { id: 46, title: 'Revisión Base + Fila superior', text: 'que ha pasado su alrededor profesor por falta del sol es el prototipo de señora porque aquellos ojos las fatigas del estudio dolor el teatro', section: 'Fila superior' },
     { id: 47, title: 'Fila superior: Izquierda', text: 'q w e r t qwert qwert qwert qwert q w e r t q w e r t qwert', section: 'Fila superior' },
     { id: 48, title: 'Fila superior: Derecha', text: 'y u i o p yuiop yuiop yuiop yuiop y u i o p y u i o p yuiop', section: 'Fila superior' },
     // 49-50: Juegos Fila superior - omitidos
