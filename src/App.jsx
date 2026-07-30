@@ -337,8 +337,8 @@ const TRAINING_LESSONS = [
     // 44: Juego Fila superior - omitido
     { id: 45, title: '¡Piensa ideas, no en letras!', text: 'escribir sin mirar el teclado permite pensar en las ideas', section: 'Fila superior' },
     { id: 46, title: 'Revisión Base + Fila superior', text: 'que ha pasado su alrededor profesor por falta del sol es el prototipo de señora porque aquellos ojos las fatigas del estudio dolor el teatro', section: 'Fila superior' },
-    { id: 47, title: 'Fila superior: Izquierda', text: 'q w e r t qwert qwert qwert qwert q w e r t q w e r t qwert', section: 'Fila superior' },
-    { id: 48, title: 'Fila superior: Derecha', text: 'y u i o p yuiop yuiop yuiop yuiop y u i o p y u i o p yuiop', section: 'Fila superior' },
+    { id: 47, title: 'Fila superior: Izquierda', text: 'eres seas terrestre edad de dar estar arte esferas errar arrastra tarde seres dar esas este traes', section: 'Fila superior' },
+    { id: 48, title: 'Fila superior: Derecha', text: 'julio yo jjññ jojo hijo jiji pujo illo ullo jiloyo kilo kiloyo hipo hiyuyu yujolo hilo hiloyuyo pipoyo', section: 'Fila superior' },
     // 49-50: Juegos Fila superior - omitidos
 
     // Fila inferior
@@ -2251,9 +2251,9 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         // Ignorar teclas modificadoras/especiales
         if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta' || e.key === 'CapsLock') return;
 
-        // hold key logic for lesson 16, 17, 31 & 32
-        if (lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32) {
-            const requiredKey = (lessonId === 16 || lessonId === 31) ? 'j' : 'f';
+        // hold key logic for lesson 16, 17, 31, 32, 47 & 48
+        if (lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32 || lessonId === 47 || lessonId === 48) {
+            const requiredKey = (lessonId === 16 || lessonId === 31 || lessonId === 47) ? 'j' : 'f';
             if (e.key.toLowerCase() === requiredKey) {
                 if (!isHoldingRequiredKey) {
                     setIsHoldingRequiredKey(true);
@@ -2605,8 +2605,8 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     onKeyUp={handleKeyUp}
                     className="w-full focus:outline-none flex flex-col items-center py-6 px-8 transition-colors rounded-xl bg-white shadow-sm border border-gray-200 relative"
                 >
-                    {/* Hold key overlay for Lesson 16, 17, 31 and 32 */}
-                    {(lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32) && !isHoldingRequiredKey && (
+                    {/* Hold key overlay for Lesson 16, 17, 31, 32, 47 and 48 */}
+                    {(lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32 || lessonId === 47 || lessonId === 48) && !isHoldingRequiredKey && (
                         <div 
                             onClick={() => containerRef.current?.focus()}
                             className="absolute inset-0 bg-slate-950/90 backdrop-blur-[1.5px] z-50 flex flex-col items-center justify-start pt-16 px-8 rounded-xl transition-all duration-300 cursor-pointer"
@@ -2614,7 +2614,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                             <h2 className="text-3xl font-bold text-white text-center mb-8 flex items-center gap-3 select-none">
                                 Mantén presionada la tecla 
                                 <span className="inline-flex items-center justify-center w-12 h-12 bg-white text-slate-900 font-bold rounded-xl shadow-lg text-xl border-b-4 border-slate-300">
-                                    {(lessonId === 16 || lessonId === 31) ? 'j' : 'f'}
+                                    {(lessonId === 16 || lessonId === 31 || lessonId === 47) ? 'j' : 'f'}
                                 </span> 
                                 mientras escribes esta lección.
                             </h2>
@@ -2683,19 +2683,19 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                     </div>
 
                     <div className="text-sm text-gray-500 mb-2 font-medium">
-                        {(lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32) ? (
+                        {(lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32 || lessonId === 47 || lessonId === 48) ? (
                             <span className="text-orange-600 font-bold">
-                                ¡Mantén presionada la tecla {(lessonId === 16 || lessonId === 31) ? 'j' : 'f'}!
+                                ¡Mantén presionada la tecla {(lessonId === 16 || lessonId === 31 || lessonId === 47) ? 'j' : 'f'}!
                             </span>
                         ) : (
                             "Presiona la tecla resaltada en tu teclado físico:"
                         )}
                     </div>
 
-                    {(lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32) ? (
+                    {(lessonId === 16 || lessonId === 17 || lessonId === 31 || lessonId === 32 || lessonId === 47 || lessonId === 48) ? (
                         <HandsKeyboardInteractive 
                             expectedChar={lesson.text[typedCount]} 
-                            anchorKey={(lessonId === 16 || lessonId === 31) ? 'j' : 'f'}
+                            anchorKey={(lessonId === 16 || lessonId === 31 || lessonId === 47) ? 'j' : 'f'}
                         />
                     ) : (
                         <>
