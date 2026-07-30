@@ -42,9 +42,17 @@ const splitTextIntoChunks = (text, maxLength = 180) => {
 };
 
 export default async function handler(req, res) {
-    // Enable CORS
+    // Configuración CORS más segura
+    const allowedOrigins = ['https://simulador-dactilografia.vercel.app', 'http://localhost:5173'];
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        // Fallback or deny depending on strictness. Let's allow local testing if no origin
+        res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
+    }
+    
     res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
     res.setHeader(
         'Access-Control-Allow-Headers',
@@ -61,7 +69,6 @@ export default async function handler(req, res) {
         let speed = '1.0';
 
         if (req.method === 'POST') {
-            // For Vercel, req.body might be parsed automatically if content-type is json
             const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
             text = body?.text || '';
             speed = body?.speed || '1.0';
@@ -72,6 +79,11 @@ export default async function handler(req, res) {
 
         if (!text) {
             return res.status(400).json({ error: 'El parámetro de texto es obligatorio.' });
+        }
+
+        // Límite de tamaño para evitar abusos o timeouts en Vercel, pero permitiendo textos largos (aprox 10-15 páginas)
+        if (text.length > 50000) {
+            return res.status(413).json({ error: 'El texto es demasiado largo. El límite es de 50.000 caracteres por solicitud para evitar saturación.' });
         }
 
         const chunks = splitTextIntoChunks(text);
