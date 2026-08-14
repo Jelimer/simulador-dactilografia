@@ -3,7 +3,8 @@ import {
     Play, RotateCcw, CheckCircle, Clock, User, Users, BookOpen, Settings,
     Star, Volume2, VolumeX, Award, ArrowLeft, History, Eye, Trash,
     Search, Coffee, Keyboard, HelpCircle, Bold, Italic, Underline,
-    AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter, Save, FileText, Sun, Moon
+    AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter, Save, FileText, Sun, Moon,
+    Menu, X, Printer, Download, Flame, Zap, Edit3, ZoomIn, ZoomOut, AlertTriangle, Plus, FilePlus
 } from 'lucide-react';
 
 // ==========================================
@@ -432,64 +433,142 @@ const handleTabChange = (tab, setActiveTab) => {
     setActiveTab(tab);
 };
 
-const Header = ({ activeTab, setActiveTab, theme, setTheme }) => (
-    <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16 items-center">
-                <div className="flex items-center space-x-3">
-                    <div className="bg-[#002B5C] text-white p-2 rounded flex flex-col items-center leading-none">
-                        <span className="font-bold text-lg">SI</span>
-                        <span className="font-bold text-lg">PJ</span>
+const Header = ({ activeTab, setActiveTab, theme, setTheme }) => {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    return (
+        <header className="bg-white border-b border-gray-200 shadow-sm relative z-30">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between h-16 items-center">
+                    <div className="flex items-center space-x-3 cursor-pointer select-none" onClick={() => handleTabChange('simulador', setActiveTab)}>
+                        <div className="bg-[#002B5C] text-white p-2 rounded flex flex-col items-center leading-none shadow-sm">
+                            <span className="font-bold text-lg">SI</span>
+                            <span className="font-bold text-lg">PJ</span>
+                        </div>
+                        <div>
+                            <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Plataforma de Ingreso</div>
+                            <div className="text-xl font-black text-[#002B5C] leading-none">PODER JUDICIAL</div>
+                        </div>
                     </div>
-                    <div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Plataforma de Ingreso</div>
-                        <div className="text-xl font-black text-[#002B5C] leading-none">PODER JUDICIAL</div>
+                    <div className="flex items-center space-x-3">
+                        <nav className="hidden md:flex space-x-6">
+                            <button 
+                                onClick={() => handleTabChange('simulador', setActiveTab)}
+                                className={`font-semibold px-2 py-5 border-b-2 transition-colors cursor-pointer ${activeTab === 'simulador' ? 'text-[#002B5C] border-[#002B5C]' : 'text-gray-400 border-transparent hover:text-[#002B5C]'}`}>
+                                Simulador Judicial
+                            </button>
+                            <button 
+                                onClick={() => handleTabChange('entrenamiento', setActiveTab)}
+                                className={`font-semibold px-2 py-5 border-b-2 transition-colors flex items-center cursor-pointer ${activeTab === 'entrenamiento' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-blue-600'}`}>
+                                <Star className="w-4 h-4 mr-1" fill="currentColor"/> Entrenamiento de Dedos
+                            </button>
+                            <button 
+                                onClick={() => handleTabChange('teoria', setActiveTab)}
+                                className={`font-semibold px-2 py-5 border-b-2 transition-colors flex items-center cursor-pointer ${activeTab === 'teoria' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-blue-600'}`}>
+                                <Award className="w-4 h-4 mr-1"/> Preparación Teórica
+                            </button>
+                        </nav>
+                        
+                        <button 
+                            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                            className="p-2.5 rounded-full border border-gray-200 hover:bg-gray-100 hover:text-gray-900 transition-colors flex items-center justify-center text-gray-500 shadow-sm cursor-pointer"
+                            title={theme === 'dark' ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
+                        >
+                            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                        </button>
+
+                        {/* Botón menú móvil */}
+                        <button 
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="md:hidden p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+                            aria-label="Abrir menú"
+                        >
+                            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                        </button>
                     </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                    <nav className="hidden md:flex space-x-8">
-                        <button 
-                            onClick={() => handleTabChange('simulador', setActiveTab)}
-                            className={`font-semibold px-1 py-5 border-b-2 transition-colors ${activeTab === 'simulador' ? 'text-[#002B5C] border-[#002B5C]' : 'text-gray-400 border-transparent hover:text-[#002B5C]'}`}>
-                            Simulador Judicial
-                        </button>
-                        <button 
-                            onClick={() => handleTabChange('entrenamiento', setActiveTab)}
-                            className={`font-semibold px-1 py-5 border-b-2 transition-colors flex items-center ${activeTab === 'entrenamiento' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-blue-600'}`}>
-                            <Star className="w-4 h-4 mr-1" fill="currentColor"/> Entrenamiento de Dedos
-                        </button>
-                        <button 
-                            onClick={() => handleTabChange('teoria', setActiveTab)}
-                            className={`font-semibold px-1 py-5 border-b-2 transition-colors flex items-center ${activeTab === 'teoria' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-blue-600'}`}>
-                            <Award className="w-4 h-4 mr-1"/> Preparación Teórica
-                        </button>
-                    </nav>
-                    
-                    <button 
-                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                        className="p-2.5 rounded-full border border-gray-200 hover:bg-gray-100 hover:text-gray-900 transition-colors flex items-center justify-center text-gray-500 shadow-sm cursor-pointer"
-                        title={theme === 'dark' ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
-                    >
-                        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    </button>
                 </div>
             </div>
-        </div>
-        <div className="bg-[#001f40] text-white text-center py-2 text-sm font-medium tracking-wide">
-            {activeTab === 'simulador' ? 'Simulador de Examen de Dactilografía' : activeTab === 'entrenamiento' ? 'Entrenamiento Interactivo de Dedos (Estilo TypingClub)' : 'Preparación Teórica - Generador de Audio de Estudio'}
-        </div>
-    </header>
-);
 
-const UserBar = () => (
-    <div className="bg-[#e6f0fa] border border-[#b3d4f5] rounded-md p-3 flex flex-wrap justify-between items-center text-sm text-[#002B5C] mb-6 shadow-sm">
-        <div className="flex items-center space-x-6">
-            <span className="flex items-center"><User className="w-4 h-4 mr-2"/> POSTULANTE_001</span>
-            <span className="flex items-center font-bold text-blue-600"><CheckCircle className="w-4 h-4 mr-1"/> Acceso de Práctica Ilimitado</span>
-            <span className="flex items-center"><Clock className="w-4 h-4 mr-1"/> {new Date().toLocaleDateString('es-AR')}</span>
+            {/* Menú desplegable para móviles */}
+            {mobileMenuOpen && (
+                <div className="md:hidden bg-white border-b border-gray-200 px-4 pt-2 pb-4 space-y-2 shadow-lg">
+                    <button 
+                        onClick={() => { handleTabChange('simulador', setActiveTab); setMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg font-semibold flex items-center justify-between cursor-pointer ${activeTab === 'simulador' ? 'bg-blue-50 text-[#002B5C] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <span>🏛️ Simulador Judicial</span>
+                        {activeTab === 'simulador' && <span className="w-2 h-2 rounded-full bg-[#002B5C]"></span>}
+                    </button>
+                    <button 
+                        onClick={() => { handleTabChange('entrenamiento', setActiveTab); setMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg font-semibold flex items-center justify-between cursor-pointer ${activeTab === 'entrenamiento' ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <span className="flex items-center"><Star className="w-4 h-4 mr-2" fill="currentColor"/> Entrenamiento de Dedos</span>
+                        {activeTab === 'entrenamiento' && <span className="w-2 h-2 rounded-full bg-blue-600"></span>}
+                    </button>
+                    <button 
+                        onClick={() => { handleTabChange('teoria', setActiveTab); setMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg font-semibold flex items-center justify-between cursor-pointer ${activeTab === 'teoria' ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <span className="flex items-center"><Award className="w-4 h-4 mr-2"/> Preparación Teórica</span>
+                        {activeTab === 'teoria' && <span className="w-2 h-2 rounded-full bg-blue-600"></span>}
+                    </button>
+                </div>
+            )}
+
+            <div className="bg-[#001f40] text-white text-center py-2 text-sm font-medium tracking-wide">
+                {activeTab === 'simulador' ? 'Simulador de Examen de Dactilografía' : activeTab === 'entrenamiento' ? 'Entrenamiento Interactivo de Dedos (Estilo TypingClub)' : 'Preparación Teórica - Generador de Audio de Estudio'}
+            </div>
+        </header>
+    );
+};
+
+const UserBar = () => {
+    const [userName, setUserName] = useState(() => {
+        return localStorage.getItem('dactilografia_userName') || 'POSTULANTE_001';
+    });
+    const [isEditing, setIsEditing] = useState(false);
+    const [tempName, setTempName] = useState(userName);
+
+    const handleSaveName = () => {
+        const cleaned = tempName.trim() || 'POSTULANTE_001';
+        setUserName(cleaned);
+        localStorage.setItem('dactilografia_userName', cleaned);
+        setIsEditing(false);
+    };
+
+    return (
+        <div className="bg-[#e6f0fa] border border-[#b3d4f5] rounded-md p-3 flex flex-wrap justify-between items-center text-sm text-[#002B5C] mb-6 shadow-sm gap-2">
+            <div className="flex items-center space-x-4 flex-wrap gap-y-2">
+                {isEditing ? (
+                    <div className="flex items-center space-x-2">
+                        <User className="w-4 h-4 text-blue-700" />
+                        <input 
+                            type="text" 
+                            className="px-2 py-1 border rounded bg-white text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={tempName}
+                            onChange={(e) => setTempName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setIsEditing(false); }}
+                            autoFocus
+                        />
+                        <button onClick={handleSaveName} className="px-2 py-0.5 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 cursor-pointer">Guardar</button>
+                    </div>
+                ) : (
+                    <button 
+                        onClick={() => { setTempName(userName); setIsEditing(true); }}
+                        className="flex items-center font-semibold hover:text-blue-800 transition-colors group cursor-pointer"
+                        title="Click para editar nombre o juzgado"
+                    >
+                        <User className="w-4 h-4 mr-2 text-blue-700"/> 
+                        <span>{userName}</span>
+                        <Edit3 className="w-3.5 h-3.5 ml-1.5 opacity-60 group-hover:opacity-100 text-blue-600" />
+                    </button>
+                )}
+                <span className="flex items-center font-bold text-blue-600"><CheckCircle className="w-4 h-4 mr-1"/> Acceso de Práctica Ilimitado</span>
+            </div>
+            <div className="flex items-center text-xs text-gray-500 font-medium">
+                <Clock className="w-3.5 h-3.5 mr-1"/> {new Date().toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 // ==========================================
 // 4. MÓDULO: SIMULADOR (EXAMEN OFICIAL)
@@ -503,14 +582,38 @@ const Simulador = () => {
     const [timeRemaining, setTimeRemaining] = useState(0);
     const [isActive, setIsActive] = useState(false);
     const [results, setResults] = useState(null);
+    const [strictMode, setStrictMode] = useState(false);
+    const [strictWarning, setStrictWarning] = useState(false);
+    const [showActaModal, setShowActaModal] = useState(false);
     const textareaRef = useRef(null);
+
+    // Textos personalizados
+    const [customLegalTexts, setCustomLegalTexts] = useState(() => {
+        try {
+            const saved = localStorage.getItem('dactilografia_custom_legal_texts');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+    const [isCreatingCustomText, setIsCreatingCustomText] = useState(false);
+    const [newCustomTitle, setNewCustomTitle] = useState('');
+    const [newCustomContent, setNewCustomContent] = useState('');
 
     const [simHistory, setSimHistory] = useState(() => {
         const saved = localStorage.getItem('dactilografia_simulador_historial');
         return saved ? JSON.parse(saved) : [];
     });
 
-    const selectedTextObject = LEGAL_TEXTS.find(t => t.id === selectedTextId);
+    const allTexts = useMemo(() => {
+        return [...LEGAL_TEXTS, ...customLegalTexts];
+    }, [customLegalTexts]);
+
+    const selectedTextObject = allTexts.find(t => t.id === selectedTextId) || LEGAL_TEXTS[0];
+
+    const candidateName = useMemo(() => {
+        return localStorage.getItem('dactilografia_userName') || 'POSTULANTE_001';
+    }, []);
 
     useEffect(() => {
         window.isTypingActive = isActive;
@@ -531,7 +634,10 @@ const Simulador = () => {
     }, [isActive, timeRemaining]);
 
     const handleStart = () => {
-        setTypedText(''); setTimeRemaining(timeLimitMinutes * 60); setIsActive(true); setPhase('typing');
+        setTypedText(''); 
+        setTimeRemaining(timeLimitMinutes * 60); 
+        setIsActive(true); 
+        setPhase('typing');
     };
 
     const handleFinish = () => {
@@ -544,6 +650,7 @@ const Simulador = () => {
 
         const newResult = {
             id: Date.now(),
+            candidateName,
             timestamp: new Date().toLocaleString('es-AR', {
                 day: '2-digit',
                 month: '2-digit',
@@ -559,6 +666,7 @@ const Simulador = () => {
             errorsPerMinute,
             timeSpentMinutes,
             passed: evalResult.accountedWords >= requiredWords,
+            strictMode,
             ...evalResult
         };
 
@@ -567,6 +675,26 @@ const Simulador = () => {
         localStorage.setItem('dactilografia_simulador_historial', JSON.stringify(updatedHistory));
         setResults(newResult);
         setPhase('results');
+    };
+
+    const handleSaveCustomText = () => {
+        if (!newCustomTitle.trim() || !newCustomContent.trim()) {
+            alert('Por favor ingrese un título y el contenido del texto judicial.');
+            return;
+        }
+        const newObj = {
+            id: Date.now(),
+            title: newCustomTitle.trim(),
+            content: newCustomContent.trim(),
+            isCustom: true
+        };
+        const updated = [...customLegalTexts, newObj];
+        setCustomLegalTexts(updated);
+        localStorage.setItem('dactilografia_custom_legal_texts', JSON.stringify(updated));
+        setSelectedTextId(newObj.id);
+        setIsCreatingCustomText(false);
+        setNewCustomTitle('');
+        setNewCustomContent('');
     };
 
     const deleteSimAttempt = (id, e) => {
@@ -582,19 +710,82 @@ const Simulador = () => {
         return `${m}:${s}`;
     };
 
+    // Live WPM calculation during typing
+    const currentElapsedSec = Math.max(1, (timeLimitMinutes * 60) - timeRemaining);
+    const currentWordsEntered = typedText.trim().split(/\s+/).filter(Boolean).length;
+    const currentLiveWPM = Math.round((currentWordsEntered / currentElapsedSec) * 60);
+
     return (
         <div className="w-full">
             {phase === 'config' && (
                 <div className="space-y-8">
                     <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-                        <h2 className="text-2xl font-bold text-[#002B5C] mb-6 flex items-center">
-                            <Settings className="w-6 h-6 mr-2" /> Configuración Examen Oficial
-                        </h2>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-[#002B5C] flex items-center">
+                                <Settings className="w-6 h-6 mr-2" /> Configuración Examen Oficial
+                            </h2>
+                            <button
+                                onClick={() => setIsCreatingCustomText(!isCreatingCustomText)}
+                                className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs rounded-lg border border-blue-200 flex items-center transition-colors cursor-pointer"
+                            >
+                                <Plus className="w-3.5 h-3.5 mr-1" />
+                                {isCreatingCustomText ? 'Cerrar Carga' : 'Cargar Texto Propio'}
+                            </button>
+                        </div>
+
+                        {isCreatingCustomText && (
+                            <div className="mb-6 p-5 bg-blue-50/50 border border-blue-200 rounded-xl space-y-4">
+                                <h3 className="font-bold text-sm text-[#002B5C] flex items-center">
+                                    <FilePlus className="w-4 h-4 mr-1.5" /> Agregar Texto de Examen Personalizado (Fallo / Dictamen)
+                                </h3>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 mb-1">Título del Texto:</label>
+                                    <input 
+                                        type="text" 
+                                        className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#002B5C]"
+                                        placeholder="Ej: Fallo 'Albarracin' - Corte Suprema"
+                                        value={newCustomTitle}
+                                        onChange={(e) => setNewCustomTitle(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 mb-1">Contenido Judicial a Copiar:</label>
+                                    <textarea 
+                                        className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm h-32 focus:ring-2 focus:ring-[#002B5C]"
+                                        placeholder="Pegue aquí el texto oficial que desea practicar..."
+                                        value={newCustomContent}
+                                        onChange={(e) => setNewCustomContent(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex justify-end space-x-2">
+                                    <button 
+                                        onClick={() => setIsCreatingCustomText(false)}
+                                        className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button 
+                                        onClick={handleSaveCustomText}
+                                        className="px-4 py-2 bg-[#002B5C] hover:bg-blue-900 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
+                                    >
+                                        Guardar y Usar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Texto a copiar:</label>
                                 <select className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C]" value={selectedTextId} onChange={(e) => setSelectedTextId(Number(e.target.value))}>
-                                    {LEGAL_TEXTS.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                                    <optgroup label="Textos Oficiales Predefinidos">
+                                        {LEGAL_TEXTS.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                                    </optgroup>
+                                    {customLegalTexts.length > 0 && (
+                                        <optgroup label="Mis Textos Personalizados">
+                                            {customLegalTexts.map(t => <option key={t.id} value={t.id}>⭐ {t.title}</option>)}
+                                        </optgroup>
+                                    )}
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-6">
@@ -603,11 +794,32 @@ const Simulador = () => {
                                     <input type="number" min="1" max="15" className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C]" value={timeLimitMinutes} onChange={(e) => setTimeLimitMinutes(Number(e.target.value))} />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Palabras mínimas:</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Palabras mínimas (Baremo oficial: 140):</label>
                                     <input type="number" min="10" max="1000" className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#002B5C]" value={requiredWords} onChange={(e) => setRequiredWords(Number(e.target.value))} />
                                 </div>
                             </div>
-                            <button onClick={handleStart} className="w-full bg-[#002B5C] hover:bg-blue-900 text-white font-bold py-4 px-6 rounded-lg text-lg flex justify-center items-center transition-colors shadow">
+
+                            {/* Modo Examen Estricto */}
+                            <div className="p-4 bg-slate-50 border rounded-lg flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <AlertTriangle className={`w-5 h-5 ${strictMode ? 'text-amber-500' : 'text-gray-400'}`} />
+                                    <div>
+                                        <span className="font-bold text-sm text-gray-800 block">Modo Examen Estricto (Sin Backspace)</span>
+                                        <span className="text-xs text-gray-500">Inhabilita la tecla de retroceso para simular condiciones oficiales de evaluación estricta.</span>
+                                    </div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={strictMode} 
+                                        onChange={(e) => setStrictMode(e.target.checked)} 
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#002B5C]"></div>
+                                </label>
+                            </div>
+
+                            <button onClick={handleStart} className="w-full bg-[#002B5C] hover:bg-blue-900 text-white font-bold py-4 px-6 rounded-lg text-lg flex justify-center items-center transition-colors shadow cursor-pointer">
                                 <Play className="w-5 h-5 mr-2" /> Iniciar Simulador
                             </button>
                         </div>
@@ -627,7 +839,7 @@ const Simulador = () => {
                                             localStorage.removeItem('dactilografia_simulador_historial');
                                         }
                                     }}
-                                    className="text-xs text-red-500 hover:text-red-700 font-semibold border border-red-200 rounded px-2.5 py-1 hover:bg-red-50 transition-colors"
+                                    className="text-xs text-red-500 hover:text-red-700 font-semibold border border-red-200 rounded px-2.5 py-1 hover:bg-red-50 transition-colors cursor-pointer"
                                 >
                                     Borrar Todo
                                 </button>
@@ -681,14 +893,14 @@ const Simulador = () => {
                                                                 setRequiredWords(attempt.requiredWords);
                                                                 setPhase('results');
                                                             }}
-                                                            className="p-1 text-blue-500 hover:text-blue-700 rounded hover:bg-blue-50 transition"
+                                                            className="p-1 text-blue-500 hover:text-blue-700 rounded hover:bg-blue-50 transition cursor-pointer"
                                                             title="Ver Detalle"
                                                         >
                                                             <Eye className="w-4 h-4" />
                                                         </button>
                                                         <button 
                                                             onClick={(e) => deleteSimAttempt(attempt.id, e)}
-                                                            className="p-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50 transition"
+                                                            className="p-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50 transition cursor-pointer"
                                                             title="Eliminar"
                                                         >
                                                             <Trash className="w-4 h-4" />
@@ -707,24 +919,53 @@ const Simulador = () => {
 
             {phase === 'typing' && (
                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <div className="flex justify-between items-center mb-4 bg-gray-50 p-4 rounded border">
-                        <h3 className="font-bold text-[#002B5C] flex items-center"><BookOpen className="w-5 h-5 mr-2"/> {selectedTextObject.title}</h3>
-                        <div className="text-2xl font-mono font-bold bg-[#002B5C] text-white px-4 py-2 rounded tabular-nums">{formatTime(timeRemaining)}</div>
+                    <div className="flex flex-wrap justify-between items-center mb-4 bg-gray-50 p-4 rounded border gap-4">
+                        <h3 className="font-bold text-[#002B5C] flex items-center">
+                            <BookOpen className="w-5 h-5 mr-2"/> {selectedTextObject.title}
+                        </h3>
+                        <div className="flex items-center space-x-4">
+                            {/* Velocímetro en tiempo real */}
+                            <div className="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-xs font-bold text-[#002B5C]">
+                                <Zap className="w-4 h-4 text-amber-500" />
+                                <span>Ritmo: {currentLiveWPM} PPM</span>
+                            </div>
+                            <div className="text-2xl font-mono font-bold bg-[#002B5C] text-white px-4 py-2 rounded tabular-nums">
+                                {formatTime(timeRemaining)}
+                            </div>
+                        </div>
                     </div>
-                    <div className="mb-6 p-4 bg-[#f8fafc] border rounded text-justify font-serif text-gray-800 select-none">
+
+                    {strictWarning && (
+                        <div className="mb-3 p-2 bg-red-100 border border-red-300 text-red-700 text-xs font-bold rounded text-center">
+                            ⚠️ Modo Examen Estricto: No está permitido borrar caracteres con retroceso.
+                        </div>
+                    )}
+
+                    <div className="mb-6 p-4 bg-[#f8fafc] border rounded text-justify font-serif text-gray-800 select-none text-base leading-relaxed max-h-48 overflow-y-auto">
                         {selectedTextObject.content}
                     </div>
+
                     <textarea
                         ref={textareaRef}
-                        className="w-full h-48 p-4 border-2 border-[#002B5C] rounded-lg focus:ring-4 focus:ring-blue-100 font-serif text-gray-800"
+                        className="w-full h-48 p-4 border-2 border-[#002B5C] rounded-lg focus:ring-4 focus:ring-blue-100 font-serif text-gray-800 text-base"
                         placeholder="Escriba aquí..."
                         value={typedText}
                         onChange={(e) => setTypedText(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (strictMode && e.key === 'Backspace') {
+                                e.preventDefault();
+                                setStrictWarning(true);
+                                setTimeout(() => setStrictWarning(false), 1500);
+                            }
+                        }}
                         onPaste={(e) => e.preventDefault()}
                         spellCheck="false"
                     />
-                    <div className="mt-4 flex justify-end">
-                        <button onClick={handleFinish} className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold flex items-center transition-colors">
+                    <div className="mt-4 flex justify-between items-center">
+                        <span className="text-xs text-gray-500">
+                            Palabras ingresadas: <strong className="text-gray-800">{currentWordsEntered}</strong>
+                        </span>
+                        <button onClick={handleFinish} className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center transition-colors cursor-pointer shadow-sm">
                             <CheckCircle className="w-4 h-4 mr-2" /> Terminar Intento
                         </button>
                     </div>
@@ -816,11 +1057,80 @@ const Simulador = () => {
                         </div>
                     </div>
 
-                    <div className="flex justify-center space-x-4">
-                        <button onClick={() => setPhase('config')} className="px-6 py-3 bg-[#002B5C] hover:bg-blue-900 text-white rounded-lg font-bold transition-colors shadow">
+                    <div className="flex flex-wrap justify-center gap-3">
+                        <button 
+                            onClick={() => setShowActaModal(true)} 
+                            className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors shadow flex items-center cursor-pointer"
+                        >
+                            <Printer className="w-4 h-4 mr-2" /> Generar Acta Oficial
+                        </button>
+                        <button 
+                            onClick={() => setPhase('config')} 
+                            className="px-6 py-3 bg-[#002B5C] hover:bg-blue-900 text-white rounded-lg font-bold transition-colors shadow cursor-pointer"
+                        >
                             Volver al menú
                         </button>
                     </div>
+
+                    {/* Modal Acta Oficial Imprimible */}
+                    {showActaModal && (
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl space-y-6 text-slate-900 relative max-h-[90vh] overflow-y-auto">
+                                <div className="text-center border-b pb-4">
+                                    <div className="text-xs font-bold uppercase tracking-widest text-[#002B5C]">Poder Judicial de la Nación / Provincial</div>
+                                    <h3 className="text-2xl font-black text-slate-900 mt-1">ACTA DE EVALUACIÓN DACTILOGRÁFICA</h3>
+                                    <p className="text-xs text-gray-500 mt-0.5">Concurso de Ingreso al Escalafón Administrativo</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded-lg border">
+                                    <div><strong>Postulante:</strong> {candidateName}</div>
+                                    <div><strong>Fecha y Hora:</strong> {results.timestamp}</div>
+                                    <div><strong>Texto Evaluado:</strong> {results.textTitle}</div>
+                                    <div><strong>Duración:</strong> {results.timeLimitMinutes} minutos</div>
+                                </div>
+
+                                <div className="text-center py-4 border-y-2 border-dashed border-slate-300">
+                                    <div className="text-xs font-bold text-gray-500 uppercase">Veredicto Oficial</div>
+                                    <div className={`text-3xl font-black mt-1 ${results.passed ? 'text-green-600' : 'text-red-600'}`}>
+                                        {results.passed ? 'APROBADO (Apto Dactilográfico)' : 'NO ALCANZADO (Insuficiente)'}
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1">
+                                        Palabras netas computadas: <strong>{results.accountedWords}</strong> (Exigidas: {results.requiredWords})
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                                    <div className="p-3 bg-gray-50 rounded border">
+                                        <span className="text-gray-500 block">Velocidad</span>
+                                        <strong className="text-base text-slate-800">{results.wpm} PPM</strong>
+                                    </div>
+                                    <div className="p-3 bg-gray-50 rounded border">
+                                        <span className="text-gray-500 block">Errores Graves</span>
+                                        <strong className="text-base text-red-600">{results.majorErrors}</strong>
+                                    </div>
+                                    <div className="p-3 bg-gray-50 rounded border">
+                                        <span className="text-gray-500 block">Errores Leves</span>
+                                        <strong className="text-base text-amber-600">{results.minorErrors}</strong>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-between items-center pt-4 border-t">
+                                    <button 
+                                        onClick={() => setShowActaModal(false)}
+                                        className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
+                                    >
+                                        Cerrar
+                                    </button>
+                                    <button 
+                                        onClick={() => window.print()}
+                                        className="px-5 py-2.5 bg-[#002B5C] hover:bg-blue-900 text-white rounded-lg text-xs font-bold flex items-center shadow cursor-pointer"
+                                    >
+                                        <Printer className="w-4 h-4 mr-1.5" /> Imprimir / Exportar a PDF
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -2151,7 +2461,62 @@ const Entrenamiento = ({ history, onAddHistory }) => {
     const [introStep, setIntroStep] = useState(1); // 1, 2, 3
     const [isHoldingRequiredKey, setIsHoldingRequiredKey] = useState(false);
     const [ambientEnabled, setAmbientEnabled] = useState(false);
+    const [fontSizeClass, setFontSizeClass] = useState('text-2xl'); // text-lg, text-2xl, text-3xl
+    const [customReinforcementLesson, setCustomReinforcementLesson] = useState(null);
     const ambientRef = useRef(null);
+
+    // Mapa de calor acumulado de errores por tecla
+    const keyErrorMap = useMemo(() => {
+        const map = {};
+        history.forEach(attempt => {
+            if (attempt.errorIndices && attempt.text) {
+                Object.keys(attempt.errorIndices).forEach(idx => {
+                    const char = attempt.text[parseInt(idx)];
+                    if (char && char !== ' ') {
+                        const c = char.toLowerCase();
+                        map[c] = (map[c] || 0) + 1;
+                    }
+                });
+            }
+        });
+        return map;
+    }, [history]);
+
+    const weakestKeys = useMemo(() => {
+        return Object.entries(keyErrorMap)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([key, count]) => ({ key, count }));
+    }, [keyErrorMap]);
+
+    const startCustomReinforcement = () => {
+        if (weakestKeys.length === 0) return;
+        const keys = weakestKeys.map(k => k.key);
+        const patterns = [];
+        for (let i = 0; i < 16; i++) {
+            let word = "";
+            const len = Math.floor(Math.random() * 3) + 3;
+            for (let j = 0; j < len; j++) {
+                word += keys[Math.floor(Math.random() * keys.length)];
+            }
+            patterns.push(word);
+        }
+        const text = patterns.join(' ');
+        const customObj = {
+            id: 999,
+            title: `Refuerzo: Teclas (${keys.join(', ').toUpperCase()})`,
+            text: text,
+            section: 'Práctica Personalizada'
+        };
+        setCustomReinforcementLesson(customObj);
+        setLessonId(999);
+        setTypedCount(0);
+        setErrors(0);
+        setStartTime(null);
+        setCharsWithErrors({});
+        setIsHoldingRequiredKey(false);
+        setPhase('typing');
+    };
 
     // Timeline filter states
     const allAttempts = useMemo(() => {
@@ -2200,7 +2565,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
         return () => window.removeEventListener('blur', handleBlur);
     }, [lessonId]);
 
-    const lesson = TRAINING_LESSONS.find(l => l.id === lessonId);
+    const lesson = customReinforcementLesson || TRAINING_LESSONS.find(l => l.id === lessonId) || TRAINING_LESSONS[0];
     const containerRef = useRef(null);
 
     // Auto-focus container al iniciar la lección o cambiar de paso en la intro
@@ -2355,6 +2720,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
     };
 
     const startLesson = (id) => {
+        setCustomReinforcementLesson(null);
         setLessonId(id);
         setTypedCount(0);
         setErrors(0);
@@ -2402,6 +2768,69 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                             {soundMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                         </button>
                     </div>
+                    
+                    {/* Panel de Mapa de Calor de Errores */}
+                    {Object.keys(keyErrorMap).length > 0 && (
+                        <div className="bg-slate-50 dark:bg-slate-900/60 p-6 rounded-2xl border border-slate-200 dark:border-white/10 mb-8 space-y-4">
+                            <div className="flex flex-wrap justify-between items-center gap-3">
+                                <div>
+                                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center">
+                                        <Flame className="w-5 h-5 mr-2 text-amber-500" />
+                                        Mapa de Calor de Errores (Heatmap del Teclado)
+                                    </h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Basado en tus intentos previos. Las teclas con fallas se destacan para ayudarte a reforzar memoria muscular.
+                                    </p>
+                                </div>
+                                {weakestKeys.length > 0 && (
+                                    <button
+                                        onClick={startCustomReinforcement}
+                                        className="px-4 py-2 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-white text-xs font-bold rounded-xl shadow flex items-center transition-all cursor-pointer"
+                                    >
+                                        <Zap className="w-4 h-4 mr-1.5" />
+                                        Entrenar Teclas Débiles ({weakestKeys.map(k => k.key.toUpperCase()).join(', ')})
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col items-center gap-1.5 overflow-x-auto py-2">
+                                {[
+                                    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+                                    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ñ'],
+                                    ['z', 'x', 'c', 'v', 'b', 'n', 'm']
+                                ].map((row, rIdx) => (
+                                    <div key={rIdx} className="flex gap-1.5 justify-center">
+                                        {row.map(char => {
+                                            const errCount = keyErrorMap[char] || 0;
+                                            let heatClass = "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700";
+                                            if (errCount >= 6) {
+                                                heatClass = "bg-red-500 text-white border-red-600 font-black shadow";
+                                            } else if (errCount >= 3) {
+                                                heatClass = "bg-amber-400 text-amber-950 border-amber-500 font-bold";
+                                            } else if (errCount >= 1) {
+                                                heatClass = "bg-yellow-100 text-yellow-900 border-yellow-300 font-medium";
+                                            }
+
+                                            return (
+                                                <div
+                                                    key={char}
+                                                    className={`w-9 h-10 sm:w-11 sm:h-11 rounded-lg border flex flex-col items-center justify-center relative select-none transition-transform hover:scale-105 ${heatClass}`}
+                                                    title={`Tecla '${char.toUpperCase()}': ${errCount} error${errCount === 1 ? '' : 'es'}`}
+                                                >
+                                                    <span className="text-xs sm:text-sm font-mono uppercase leading-none">{char}</span>
+                                                    {errCount > 0 && (
+                                                        <span className="text-[9px] opacity-90 leading-none mt-0.5">
+                                                            {errCount}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     
                     <div className="space-y-10">
                         {Object.entries(
@@ -2666,12 +3095,30 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                                         ></div>
                                     </div>
                                 </div>
+                                <div className="w-px h-3.5 bg-gray-200 dark:bg-white/10"></div>
+                                {/* Controles de Tamaño de Letra */}
+                                <div className="flex items-center space-x-1">
+                                    <button 
+                                        onClick={() => setFontSizeClass(prev => prev === 'text-3xl' ? 'text-2xl' : 'text-lg')}
+                                        className="p-1 text-gray-500 hover:text-blue-600 rounded text-xs font-bold"
+                                        title="Reducir letra"
+                                    >
+                                        A-
+                                    </button>
+                                    <button 
+                                        onClick={() => setFontSizeClass(prev => prev === 'text-lg' ? 'text-2xl' : 'text-3xl')}
+                                        className="p-1 text-gray-500 hover:text-blue-600 rounded text-xs font-bold"
+                                        title="Agrandar letra"
+                                    >
+                                        A+
+                                    </button>
+                                </div>
                             </div>
-                            <button onClick={() => setPhase('menu')} className="hover:text-red-500 font-semibold">Abandonar</button>
+                            <button onClick={() => setPhase('menu')} className="hover:text-red-500 font-semibold cursor-pointer">Abandonar</button>
                         </div>
                     </div>
 
-                    <div className="w-full p-6 bg-slate-50 rounded-xl border border-gray-150 font-mono text-2xl tracking-wide leading-relaxed text-center mb-6 select-none focus:outline-none shadow-inner whitespace-pre-wrap break-all">
+                    <div className={`w-full p-6 bg-slate-50 rounded-xl border border-gray-150 font-mono ${fontSizeClass} tracking-wide leading-relaxed text-center mb-6 select-none focus:outline-none shadow-inner whitespace-pre-wrap break-all`}>
                         {lesson.text.split('').map((char, index) => {
                             let charClass = "text-gray-400";
                             const hasError = charsWithErrors[index];
@@ -2963,9 +3410,34 @@ const PreparacionTeorica = () => {
         } catch (e) {}
     }, [savedTexts]);
 
+    const [editorFontSize, setEditorFontSize] = useState('text-sm');
+
     useEffect(() => {
         playingRef.current = playing;
     }, [playing]);
+
+    // Atajos de teclado para el reproductor de audio
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            const isEditing = document.activeElement === editorRef.current || 
+                              document.activeElement?.tagName === 'INPUT' || 
+                              document.activeElement?.tagName === 'TEXTAREA';
+            if (isEditing) return;
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlayback();
+            } else if (e.code === 'ArrowLeft' && audioRef.current && mp3Url) {
+                e.preventDefault();
+                audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 5);
+            } else if (e.code === 'ArrowRight' && audioRef.current && mp3Url) {
+                e.preventDefault();
+                audioRef.current.currentTime = Math.min(audioDuration || 9999, audioRef.current.currentTime + 5);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [playing, mp3Url, audioDuration]);
 
     // Keep editor sync for loaded files (PDF / History)
     useEffect(() => {
@@ -3710,11 +4182,26 @@ const PreparacionTeorica = () => {
                                 >
                                     <AlignJustify size={16} />
                                 </button>
+                                <div className="w-px h-6 bg-slate-200 mx-1"></div>
+                                <button 
+                                    onClick={() => setEditorFontSize(prev => prev === 'text-lg' ? 'text-base' : prev === 'text-base' ? 'text-sm' : 'text-xs')} 
+                                    className="p-1.5 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-50 font-bold text-xs shadow-sm flex items-center justify-center transition-colors min-w-[32px] h-8" 
+                                    title="Reducir tamaño de letra"
+                                >
+                                    A-
+                                </button>
+                                <button 
+                                    onClick={() => setEditorFontSize(prev => prev === 'text-xs' ? 'text-sm' : prev === 'text-sm' ? 'text-base' : 'text-lg')} 
+                                    className="p-1.5 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-50 font-bold text-xs shadow-sm flex items-center justify-center transition-colors min-w-[32px] h-8" 
+                                    title="Agrandar tamaño de letra"
+                                >
+                                    A+
+                                </button>
                             </div>
                             
                             <button 
                                 onClick={handleSaveText}
-                                className="bg-[#002B5C] hover:bg-blue-900 text-white font-bold py-1.5 px-3.5 rounded text-xs flex items-center transition shadow-sm h-8"
+                                className="bg-[#002B5C] hover:bg-blue-900 text-white font-bold py-1.5 px-3.5 rounded text-xs flex items-center transition shadow-sm h-8 cursor-pointer"
                             >
                                 <Save size={14} className="mr-1.5" /> Guardar en Historial
                             </button>
@@ -3725,7 +4212,7 @@ const PreparacionTeorica = () => {
                             ref={editorRef}
                             contentEditable={true}
                             onInput={handleEditorInput}
-                            className="w-full h-64 p-4 border border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-[#002B5C] focus:border-transparent font-sans text-gray-800 leading-relaxed text-sm overflow-y-auto bg-white shadow-inner"
+                            className={`w-full h-64 p-4 border border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-[#002B5C] focus:border-transparent font-sans text-gray-800 leading-relaxed ${editorFontSize} overflow-y-auto bg-white shadow-inner`}
                             placeholder="El texto extraído aparecerá aquí. También puedes pegar tu propio texto directamente y darle formato..."
                             style={{ minHeight: '16rem' }}
                         />
