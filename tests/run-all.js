@@ -25,7 +25,8 @@ const TIERS = [
             'tier1-functional/test-storage-keys.test.js',
             'tier1-functional/test-judicial-evaluator.test.js',
             'tier1-functional/test-strict-mode.test.js',
-            'tier1-functional/test-training-lessons.test.js'
+            'tier1-functional/test-training-lessons.test.js',
+            'tier1-functional/test-array-returns-and-completion-flows.test.js'
         ]
     },
     {
@@ -35,7 +36,8 @@ const TIERS = [
             'tier2-edge-cases/test-corrupt-storage.test.js',
             'tier2-edge-cases/test-quota-exceeded.test.js',
             'tier2-edge-cases/test-empty-texts.test.js',
-            'tier2-edge-cases/test-special-chars.test.js'
+            'tier2-edge-cases/test-special-chars.test.js',
+            'tier2-edge-cases/test-error-boundary.test.js'
         ]
     },
     {

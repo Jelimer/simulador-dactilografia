@@ -125,6 +125,23 @@ function nextUniqueId() {
     return ++_idCounter;
 }
 
+export function attachSafeProps(targetArr, sourceObj) {
+    if (!sourceObj || typeof sourceObj !== 'object' || !Array.isArray(targetArr)) {
+        return targetArr;
+    }
+    for (const key of Object.keys(sourceObj)) {
+        if (key === 'length' || /^\d+$/.test(key) || key in Array.prototype) {
+            continue;
+        }
+        try {
+            targetArr[key] = sourceObj[key];
+        } catch {
+            // Ignorar
+        }
+    }
+    return targetArr;
+}
+
 export class CanonicalStorageService {
     constructor() {
         this.memoryStore = new Map();
@@ -260,7 +277,7 @@ export class CanonicalStorageService {
         this.safeSet('dactilografia_custom_legal_texts', updated);
         // Sincronizar alias para compatibilidad bidireccional
         this.safeSet('dactilografia_custom_texts', updated);
-        return newObj;
+        return attachSafeProps(updated, newObj);
     }
 
     deleteCustomText(id) {
@@ -276,8 +293,16 @@ export class CanonicalStorageService {
     }
 
     saveSimAttempt(attempt) {
+        if (!attempt) return this.getSimHistory();
         const current = this.getSimHistory();
         const updated = [attempt, ...current];
+        this.safeSet('dactilografia_simulador_historial', updated);
+        return attachSafeProps(updated, attempt);
+    }
+
+    deleteSimAttempt(id) {
+        const current = this.getSimHistory();
+        const updated = current.filter(x => x.id !== id);
         this.safeSet('dactilografia_simulador_historial', updated);
     }
 
@@ -291,9 +316,11 @@ export class CanonicalStorageService {
     }
 
     saveTrainingAttempt(attempt) {
+        if (!attempt) return this.getTrainingHistory();
         const current = this.getTrainingHistory();
         const updated = [...current, attempt];
         this.safeSet('dactilografia_historial', updated);
+        return attachSafeProps(updated, attempt);
     }
 
     getTheoryHistory() {
@@ -302,17 +329,33 @@ export class CanonicalStorageService {
     }
 
     saveTheoryNote(note) {
+        if (!note || typeof note !== 'object') return this.getTheoryHistory();
         const current = this.getTheoryHistory();
+        const noteId = note.id !== undefined && note.id !== null ? String(note.id) : String(nextUniqueId());
         const newNote = {
-            id: nextUniqueId(),
+            id: noteId,
             title: note.title?.trim() || 'Nota sin título',
             content: note.content || '',
             date: new Date().toISOString(),
-            ...note
+            ...note,
+            id: noteId
         };
-        const updated = [newNote, ...current];
+        const existingIdx = current.findIndex(n => String(n.id) === noteId);
+        let updated;
+        if (existingIdx >= 0) {
+            updated = current.map(item => String(item.id) === noteId ? newNote : item);
+        } else {
+            updated = [newNote, ...current];
+        }
         this.safeSet('dactilografia_teoria_historial', updated);
-        return newNote;
+        return attachSafeProps(updated, newNote);
+    }
+
+    deleteTheoryNote(id) {
+        const strId = String(id);
+        const current = this.getTheoryHistory();
+        const updated = current.filter(n => String(n.id) !== strId);
+        this.safeSet('dactilografia_teoria_historial', updated);
     }
 
     clearTheoryHistory() {

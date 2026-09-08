@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import storageService from './services/storage/storageService';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { 
     Play, RotateCcw, CheckCircle, Clock, User, Users, BookOpen, Settings,
     Star, Volume2, VolumeX, Award, ArrowLeft, History, Eye, Trash,
@@ -591,15 +592,36 @@ const Simulador = () => {
     const activeWordRef = useRef(null);
 
     // Textos personalizados blindados con storageService
-    const [customLegalTexts, setCustomLegalTexts] = useState(() => storageService.getCustomTexts());
+    const [rawCustomLegalTexts, _setCustomLegalTexts] = useState(() => {
+        const initial = storageService.getCustomTexts();
+        return Array.isArray(initial) ? initial : [];
+    });
+    const customLegalTexts = Array.isArray(rawCustomLegalTexts) ? rawCustomLegalTexts : [];
+    const setCustomLegalTexts = (val) => {
+        _setCustomLegalTexts(prev => {
+            const resolved = typeof val === 'function' ? val(prev) : val;
+            return Array.isArray(resolved) ? resolved : (resolved ? [resolved] : []);
+        });
+    };
     const [isCreatingCustomText, setIsCreatingCustomText] = useState(false);
     const [newCustomTitle, setNewCustomTitle] = useState('');
     const [newCustomContent, setNewCustomContent] = useState('');
 
-    const [simHistory, setSimHistory] = useState(() => storageService.getSimHistory());
+    const [rawSimHistory, _setSimHistory] = useState(() => {
+        const initial = storageService.getSimHistory();
+        return Array.isArray(initial) ? initial : [];
+    });
+    const simHistory = Array.isArray(rawSimHistory) ? rawSimHistory : [];
+    const setSimHistory = (val) => {
+        _setSimHistory(prev => {
+            const resolved = typeof val === 'function' ? val(prev) : val;
+            return Array.isArray(resolved) ? resolved : (resolved ? [resolved] : []);
+        });
+    };
 
     const allTexts = useMemo(() => {
-        return [...LEGAL_TEXTS, ...customLegalTexts];
+        const safeCustom = Array.isArray(customLegalTexts) ? customLegalTexts : [];
+        return [...LEGAL_TEXTS, ...safeCustom];
     }, [customLegalTexts]);
 
     const selectedTextObject = allTexts.find(t => t.id === selectedTextId) || LEGAL_TEXTS[0];
@@ -687,7 +709,7 @@ const Simulador = () => {
         };
 
         const updatedHistory = storageService.saveSimAttempt(newResult);
-        setSimHistory(updatedHistory);
+        setSimHistory(Array.isArray(updatedHistory) ? updatedHistory : (updatedHistory ? [updatedHistory] : []));
         setResults(newResult);
         setPhase('results');
     };
@@ -698,14 +720,16 @@ const Simulador = () => {
             return;
         }
         const newObj = {
-            id: Date.now(),
             title: newCustomTitle.trim(),
             content: newCustomContent.trim(),
             isCustom: true
         };
         const updated = storageService.saveCustomText(newObj);
-        setCustomLegalTexts(updated);
-        setSelectedTextId(newObj.id);
+        setCustomLegalTexts(Array.isArray(updated) ? updated : (updated ? [updated] : []));
+        const savedId = updated.id || (Array.isArray(updated) && updated[updated.length - 1]?.id);
+        if (savedId) {
+            setSelectedTextId(savedId);
+        }
         setIsCreatingCustomText(false);
         setNewCustomTitle('');
         setNewCustomContent('');
@@ -713,9 +737,10 @@ const Simulador = () => {
 
     const deleteSimAttempt = (id, e) => {
         e.stopPropagation();
-        const updated = simHistory.filter(x => x.id !== id);
+        const safeHistory = Array.isArray(simHistory) ? simHistory : [];
+        const updated = safeHistory.filter(x => x.id !== id);
         setSimHistory(updated);
-        storageService.safeSet('dactilografia_simulador_historial', updated);
+        storageService.deleteSimAttempt(id);
     };
 
     const formatTime = (seconds) => {
@@ -850,7 +875,7 @@ const Simulador = () => {
                                     onClick={() => {
                                         if (window.confirm("¿Seguro que deseas borrar todo el historial del simulador?")) {
                                             setSimHistory([]);
-                                            localStorage.removeItem('dactilografia_simulador_historial');
+                                            storageService.clearSimHistory();
                                         }
                                     }}
                                     className="text-xs text-red-500 hover:text-red-700 font-semibold border border-red-200 rounded px-2.5 py-1 hover:bg-red-50 transition-colors cursor-pointer"
@@ -866,9 +891,9 @@ const Simulador = () => {
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                                     <thead>
-                                        <tr className="text-gray-400 font-bold text-left text-xs uppercase tracking-wider">
-                                            <th className="pb-3">Fecha</th>
-                                            <th className="pb-3">Texto Seleccionado</th>
+                                        <tr className="text-gray-400 font-semibold text-xs border-b">
+                                            <th className="pb-3 text-left">Fecha y Hora</th>
+                                            <th className="pb-3 text-left">Texto Seleccionado</th>
                                             <th className="pb-3 text-center">Velocidad</th>
                                             <th className="pb-3 text-center">Palabras (Escritas / Req.)</th>
                                             <th className="pb-3 text-center">Errores (G/L)</th>
@@ -877,7 +902,7 @@ const Simulador = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
-                                        {simHistory.map((attempt) => (
+                                        {simHistory.filter(Boolean).map((attempt) => (
                                             <tr key={attempt.id} className="text-gray-700 hover:bg-gray-50/50">
                                                 <td className="py-3 font-medium text-gray-500 whitespace-nowrap">{attempt.timestamp}</td>
                                                 <td className="py-3 font-semibold text-gray-800 max-w-[200px] truncate" title={attempt.textTitle}>
@@ -1009,7 +1034,14 @@ const Simulador = () => {
             )}
 
             {phase === 'results' && results && (
-                <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 max-w-2xl mx-auto space-y-6">
+                <ErrorBoundary
+                    key="sim-results-boundary"
+                    resetKey={results?.id || phase}
+                    fallbackTitle="Error al visualizar el resultado del examen"
+                    fallbackMessage="Se produjo un problema al renderizar el informe de resultados. El intento ha sido guardado exitosamente en el historial."
+                    onReset={() => setPhase('config')}
+                >
+                    <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 max-w-2xl mx-auto space-y-6">
                     <div className="text-center">
                         <h2 className={`text-4xl font-black tracking-wide ${results.passed ? 'text-green-600' : 'text-red-600'}`}>
                             {results.passed ? 'APROBADO' : 'NO ALCANZADO'}
@@ -1062,25 +1094,26 @@ const Simulador = () => {
                             Revisión del Texto Evaluado (Palabra por Palabra)
                         </h4>
                         <div className="flex flex-wrap gap-2 text-justify font-serif text-lg leading-relaxed select-none">
-                            {results.evaluatedOrig && results.evaluatedOrig.map((wordObj, wIdx) => {
+                            {results.evaluatedOrig && Array.isArray(results.evaluatedOrig) && results.evaluatedOrig.filter(Boolean).map((wordObj, wIdx) => {
                                 let wordClass = "";
                                 let titleText = "";
-                                if (wordObj.status === 'correct') {
+                                const status = wordObj?.status;
+                                if (status === 'correct') {
                                     wordClass = "text-green-600";
                                     titleText = "Correcta";
-                                } else if (wordObj.status === 'minor') {
+                                } else if (status === 'minor') {
                                     wordClass = "text-amber-600 bg-amber-50 border-b-2 border-amber-400 font-semibold px-0.5 rounded";
                                     titleText = "Error Leve (Acento o Mayúscula)";
-                                } else if (wordObj.status === 'major') {
+                                } else if (status === 'major') {
                                     wordClass = "text-red-600 bg-red-50 border-b-2 border-red-500 font-bold px-0.5 rounded";
                                     titleText = "Error Grave (Falta de ortografía o palabra incorrecta)";
-                                } else if (wordObj.status === 'omitted') {
+                                } else if (status === 'omitted') {
                                     wordClass = "text-gray-400 line-through opacity-60";
                                     titleText = "Palabra Omitida";
                                 }
                                 return (
                                     <span key={wIdx} className={`${wordClass} cursor-help`} title={titleText}>
-                                        {wordObj.text}
+                                        {wordObj?.text || ''}
                                     </span>
                                 );
                             })}
@@ -1167,7 +1200,8 @@ const Simulador = () => {
                             </div>
                         </div>
                     )}
-                </div>
+                    </div>
+                </ErrorBoundary>
             )}
         </div>
     );
@@ -1254,15 +1288,20 @@ const HandsGuide = React.memo(({ expectedChar }) => {
 // COMPONENTE: GRÁFICOS DE EVOLUCIÓN
 // ==========================================
 const EvolutionCharts = ({ filteredAttempts }) => {
-    if (!filteredAttempts || filteredAttempts.length === 0) {
+    const validAttempts = useMemo(() => {
+        return (Array.isArray(filteredAttempts) ? filteredAttempts : [])
+            .filter(a => a && typeof a === 'object');
+    }, [filteredAttempts]);
+
+    if (!validAttempts || validAttempts.length === 0) {
         return null;
     }
 
-    const maxWpm = Math.max(...filteredAttempts.map(a => a.wpm), 30);
+    const maxWpm = Math.max(...validAttempts.map(a => Number(a?.wpm) || 0), 30);
 
     // Calculemos los rangos dinámicos para evitar que se vean aplastados
-    const wpms = filteredAttempts.map(a => a.wpm);
-    const precs = filteredAttempts.map(a => a.precision);
+    const wpms = validAttempts.map(a => Number(a?.wpm) || 0);
+    const precs = validAttempts.map(a => Number(a?.precision) || 0);
 
     const minWpmVal = Math.min(...wpms);
     const maxWpmVal = Math.max(...wpms);
@@ -1273,7 +1312,7 @@ const EvolutionCharts = ({ filteredAttempts }) => {
         minW = Math.max(0, minW - 5);
         maxW = maxW + 5;
     }
-    const wpmRange = maxW - minW;
+    const wpmRange = (maxW - minW) || 1;
 
     const minPrecVal = Math.min(...precs);
     const maxPrecVal = Math.max(...precs);
@@ -1285,26 +1324,28 @@ const EvolutionCharts = ({ filteredAttempts }) => {
         minP = Math.max(0, minP - 5);
         maxP = Math.min(100, maxP + 5);
     }
-    const precRange = maxP - minP;
+    const precRange = (maxP - minP) || 1;
 
     // Prepare points for combined chart
     const paddingX = 40;
     const paddingY = 40;
     const plotW = 520;
 
-    const points = filteredAttempts.map((a, idx) => {
-        const x = filteredAttempts.length === 1 
+    const points = validAttempts.map((a, idx) => {
+        const x = validAttempts.length === 1 
             ? paddingX + plotW / 2 
-            : paddingX + (idx / (filteredAttempts.length - 1)) * plotW;
+            : paddingX + (idx / (validAttempts.length - 1 || 1)) * plotW;
         
+        const aPrec = Number(a?.precision) || 0;
+        const aWpm = Number(a?.wpm) || 0;
         // Mapeo dinámico e independiente a bandas verticales
         // Precisión: rango vertical superior [40, 180] (altura de 140px)
-        const y_prec = 180 - ((a.precision - minP) / precRange) * 140;
+        const y_prec = 180 - ((aPrec - minP) / precRange) * 140;
         
         // Velocidad: rango vertical inferior [220, 360] (altura de 140px)
-        const y_wpm = 360 - ((a.wpm - minW) / wpmRange) * 140;
+        const y_wpm = 360 - ((aWpm - minW) / wpmRange) * 140;
         
-        return { x, y_wpm, y_prec, wpm: a.wpm, precision: a.precision, timeOnly: a.timeOnly };
+        return { x, y_wpm, y_prec, wpm: aWpm, precision: aPrec, timeOnly: a?.timeOnly || '' };
     });
 
     const wpmPath = points.length > 1 ? points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y_wpm}`).join(' ') : '';
@@ -1322,29 +1363,30 @@ const EvolutionCharts = ({ filteredAttempts }) => {
                         <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-0 pointer-events-none"></div>
                         <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-1/2 pointer-events-none"></div>
                         
-                        {filteredAttempts.map((attempt, idx) => {
-                            const pctHeight = Math.max(5, (attempt.wpm / maxWpm) * 100);
+                        {validAttempts.map((attempt, idx) => {
+                            const attWpm = Number(attempt?.wpm) || 0;
+                            const pctHeight = Math.max(5, Math.min(100, (attWpm / maxWpm) * 100));
                             return (
-                                <div key={attempt.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
+                                <div key={attempt?.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
                                     <span 
                                         style={{ bottom: `calc(${pctHeight}% + 4px)` }}
                                         className="absolute text-[10px] font-bold text-slate-700 whitespace-nowrap bg-white/80 px-1 rounded shadow-sm border border-slate-100/50"
                                     >
-                                        {Math.round(attempt.wpm)}
+                                        {Math.round(attWpm)}
                                     </span>
                                     <div 
                                         style={{ height: `${pctHeight}%` }} 
                                         className="w-full bg-[#3e5c76] rounded-t hover:bg-blue-600 transition-all duration-500 shadow-sm"
-                                        title={`${attempt.timestamp}: ${attempt.wpm} PPM`}
+                                        title={`${attempt?.timestamp || ''}: ${attWpm} PPM`}
                                     ></div>
                                 </div>
                             );
                         })}
                     </div>
                     <div className="flex justify-around mt-2 px-2">
-                        {filteredAttempts.map((att, idx) => (
+                        {validAttempts.map((att, idx) => (
                             <span key={idx} className="w-8 text-center text-[9px] text-gray-400 whitespace-nowrap overflow-visible leading-tight">
-                                {att.timeOnly}
+                                {att?.timeOnly || ''}
                             </span>
                         ))}
                     </div>
@@ -1357,15 +1399,16 @@ const EvolutionCharts = ({ filteredAttempts }) => {
                         <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-0 pointer-events-none"></div>
                         <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-1/2 pointer-events-none"></div>
                         
-                        {filteredAttempts.map((attempt, idx) => {
-                            const pctHeight = attempt.precision; 
+                        {validAttempts.map((attempt, idx) => {
+                            const attPrec = Number(attempt?.precision) || 0;
+                            const pctHeight = Math.max(0, Math.min(100, attPrec)); 
                             return (
-                                <div key={attempt.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
+                                <div key={attempt?.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
                                     <span 
                                         style={{ bottom: `calc(${pctHeight}% + 8px)` }}
                                         className="absolute text-[10px] font-bold text-slate-700 whitespace-nowrap bg-white/80 px-1 rounded shadow-sm border border-slate-100/50 transform -translate-y-1/2"
                                     >
-                                        {Math.round(attempt.precision)}%
+                                        {Math.round(attPrec)}%
                                     </span>
                                     <div className="absolute w-full h-full flex flex-col justify-end items-center pointer-events-none">
                                         <div style={{ bottom: `${pctHeight}%` }} className="absolute w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow transform translate-y-1/2"></div>
@@ -1376,9 +1419,9 @@ const EvolutionCharts = ({ filteredAttempts }) => {
                         })}
                     </div>
                     <div className="flex justify-around mt-2 px-2">
-                        {filteredAttempts.map((att, idx) => (
+                        {validAttempts.map((att, idx) => (
                             <span key={idx} className="w-8 text-center text-[9px] text-gray-400 whitespace-nowrap overflow-visible leading-tight">
-                                {att.timeOnly}
+                                {att?.timeOnly || ''}
                             </span>
                         ))}
                     </div>
@@ -1488,15 +1531,23 @@ const TrainingResultsUI = ({
         return `${m}:${s}`;
     };
 
-    const minDuration = useMemo(() => {
-        if (!lessonAttempts || lessonAttempts.length === 0) return null;
-        return Math.min(...lessonAttempts.map(att => att.duration || 999999));
+    const safeLessonAttempts = useMemo(() => {
+        return (Array.isArray(lessonAttempts) ? lessonAttempts : []).filter(a => a && typeof a === 'object');
     }, [lessonAttempts]);
 
+    const safeAllAttempts = useMemo(() => {
+        return (Array.isArray(allAttempts) ? allAttempts : []).filter(a => a && typeof a === 'object');
+    }, [allAttempts]);
+
+    const minDuration = useMemo(() => {
+        if (!safeLessonAttempts || safeLessonAttempts.length === 0) return null;
+        return Math.min(...safeLessonAttempts.map(att => Number(att?.duration) || 999999));
+    }, [safeLessonAttempts]);
+
     const maxSpeed = useMemo(() => {
-        if (!lessonAttempts || lessonAttempts.length === 0) return null;
-        return Math.max(...lessonAttempts.map(att => att.wpm || 0));
-    }, [lessonAttempts]);
+        if (!safeLessonAttempts || safeLessonAttempts.length === 0) return null;
+        return Math.max(...safeLessonAttempts.map(att => Number(att?.wpm) || 0));
+    }, [safeLessonAttempts]);
 
     if (!metrics) {
         return (
@@ -1521,7 +1572,12 @@ const TrainingResultsUI = ({
         );
     }
 
-    const accuracy = metrics.precision;
+    const accuracy = Number(metrics?.precision) || 0;
+    const currentWpm = Number(metrics?.wpm) || 0;
+    const correctLetters = Number(metrics?.correctChars) || 0;
+    const errorLetters = Number(metrics?.errorChars) || 0;
+    const currentDuration = Number(metrics?.duration) || 0;
+
     let stars = 0;
     if (accuracy >= 98) stars = 5;
     else if (accuracy >= 95) stars = 4;
@@ -1586,17 +1642,17 @@ const TrainingResultsUI = ({
                 <div className="bg-black/25 backdrop-blur-sm border border-white/10 rounded-xl py-3 px-8 mb-8 flex justify-center space-x-8 text-center text-sm w-full max-w-lg">
                     <div>
                         <span className="block text-gray-300 text-xs uppercase tracking-wider">Letras Escritas</span>
-                        <strong className="text-xl font-bold text-white">{metrics.correctChars + metrics.errorChars}</strong>
+                        <strong className="text-xl font-bold text-white">{correctLetters + errorLetters}</strong>
                     </div>
                     <div className="w-px bg-white/10 my-1"></div>
                     <div>
                         <span className="block text-gray-300 text-xs uppercase tracking-wider">Letras Acertadas</span>
-                        <strong className="text-xl font-bold text-green-400">{metrics.correctChars}</strong>
+                        <strong className="text-xl font-bold text-green-400">{correctLetters}</strong>
                     </div>
                     <div className="w-px bg-white/10 my-1"></div>
                     <div>
                         <span className="block text-gray-300 text-xs uppercase tracking-wider">Letras Erradas</span>
-                        <strong className="text-xl font-bold text-red-400">{metrics.errorChars}</strong>
+                        <strong className="text-xl font-bold text-red-400">{errorLetters}</strong>
                     </div>
                 </div>
 
@@ -1614,14 +1670,14 @@ const TrainingResultsUI = ({
                             <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 140 140">
                                 <circle cx="70" cy="70" r="50" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
                                 <circle cx="70" cy="70" r="50" fill="none" stroke={circleYellow} strokeWidth="6" 
-                                        strokeDasharray="314.16" strokeDashoffset={314.16 - (314.16 * Math.min(100, Math.max(0, metrics.precision))) / 100}
+                                        strokeDasharray="314.16" strokeDashoffset={314.16 - (314.16 * Math.min(100, Math.max(0, accuracy))) / 100}
                                         strokeLinecap="round" />
                                 {precisionTicks}
                             </svg>
                             <div className="z-10 text-center">
-                                <div className="text-3xl font-black tabular-nums">{Math.round(metrics.precision)}%</div>
+                                <div className="text-3xl font-black tabular-nums">{Math.round(accuracy)}%</div>
                                 <div className="text-[9px] uppercase tracking-widest mt-0.5 text-white/70">precisión real</div>
-                                <div className="text-[10px] font-semibold text-yellow-400/90 tabular-nums">{Math.round(metrics.precision)}%</div>
+                                <div className="text-[10px] font-semibold text-yellow-400/90 tabular-nums">{Math.round(accuracy)}%</div>
                             </div>
                             <div className="absolute -bottom-8 font-bold uppercase tracking-widest text-[11px] text-gray-300">precisión</div>
                         </div>
@@ -1633,7 +1689,7 @@ const TrainingResultsUI = ({
                             {durationTicks}
                         </svg>
                         <div className="z-10 text-center">
-                            <div className="text-2xl font-bold tabular-nums">{formatDur(metrics.duration)}</div>
+                            <div className="text-2xl font-bold tabular-nums">{formatDur(currentDuration)}</div>
                             <div className="text-[8px] uppercase tracking-widest text-white/60">min:segundos</div>
                         </div>
                         <div className="absolute -bottom-10 font-bold uppercase tracking-widest text-[11px] text-gray-300">duración</div>
@@ -1645,12 +1701,12 @@ const TrainingResultsUI = ({
                             <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 140 140">
                                 <circle cx="70" cy="70" r="50" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
                                 <circle cx="70" cy="70" r="50" fill="none" stroke={circleYellow} strokeWidth="6" 
-                                        strokeDasharray="314.16" strokeDashoffset={314.16 - (314.16 * Math.min(100, (metrics.wpm / 60) * 100)) / 100}
+                                        strokeDasharray="314.16" strokeDashoffset={314.16 - (314.16 * Math.min(100, (currentWpm / 60) * 100)) / 100}
                                         strokeLinecap="round" />
                                 {speedTicks}
                             </svg>
                             <div className="z-10 text-center">
-                                <div className="text-3xl font-black tabular-nums">{Math.round(metrics.wpm)}</div>
+                                <div className="text-3xl font-black tabular-nums">{Math.round(currentWpm)}</div>
                                 <div className="text-[9px] uppercase tracking-widest mt-0.5 text-white/70">ppm</div>
                             </div>
                             <div className="absolute -bottom-8 font-bold uppercase tracking-widest text-[11px] text-gray-300">velocidad</div>
@@ -1667,7 +1723,7 @@ const TrainingResultsUI = ({
                 {/* Puntuación */}
                 <div className="mt-14 text-center">
                     <div className="text-5xl font-black tracking-tight tabular-nums">
-                        {Math.round((metrics.wpm * (metrics.precision / 100) * 100))}
+                        {Math.round((currentWpm * (accuracy / 100) * 100)) || 0}
                     </div>
                     <div className="h-0.5 w-48 bg-white/20 mx-auto my-1.5"></div>
                     <div className="text-xs font-bold tracking-widest uppercase text-yellow-400">PUNTUACIÓN OBTENIDA</div>
@@ -1681,8 +1737,8 @@ const TrainingResultsUI = ({
                 </div>
                 
                 <div className="bg-white rounded-xl p-6 shadow-inner border border-gray-200 mb-8 font-mono text-2xl leading-loose text-center whitespace-pre-wrap break-all">
-                     {metrics.text.split('').map((char, idx) => {
-                        const hasError = metrics.errorIndices && metrics.errorIndices[idx];
+                     {(metrics?.text || '').split('').map((char, idx) => {
+                        const hasError = metrics?.errorIndices && metrics.errorIndices[idx];
                         const charToShow = char === ' ' ? '␣' : char;
                         const charClass = hasError 
                             ? "bg-red-100 text-red-700 border-b-2 border-red-500 font-semibold" 
@@ -1706,7 +1762,7 @@ const TrainingResultsUI = ({
                 </div>
 
                 {/* Filtro de Línea de Tiempo de Intentos (Visualización e interactividad premium) */}
-                {allAttempts && allAttempts.length > 0 && (
+                {safeAllAttempts && safeAllAttempts.length > 0 && (
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm w-full flex flex-col mt-8">
                         <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-4 flex items-center">
                             <Clock className="w-4 h-4 mr-2 text-blue-600" /> Línea de Tiempo de Intentos
@@ -1721,18 +1777,20 @@ const TrainingResultsUI = ({
                             <div 
                                 className="absolute h-1.5 bg-blue-500 top-1/2 -translate-y-1/2 rounded-full transition-all duration-300"
                                 style={{
-                                    left: `${6 + (startIndex / (allAttempts.length - 1 || 1)) * 88}%`,
-                                    right: `${6 + ((allAttempts.length - 1 - endIndex) / (allAttempts.length - 1 || 1)) * 88}%`
+                                    left: `${6 + (startIndex / (safeAllAttempts.length - 1 || 1)) * 88}%`,
+                                    right: `${6 + ((safeAllAttempts.length - 1 - endIndex) / (safeAllAttempts.length - 1 || 1)) * 88}%`
                                 }}
                             ></div>
                             
-                            {allAttempts.map((att, idx) => {
+                            {safeAllAttempts.map((att, idx) => {
                                 const isActive = idx >= startIndex && idx <= endIndex;
-                                const pct = (idx / (allAttempts.length - 1 || 1)) * 100;
+                                const pct = (idx / (safeAllAttempts.length - 1 || 1)) * 100;
+                                const attWpm = Number(att?.wpm) || 0;
+                                const attPrec = Number(att?.precision) || 0;
                                 
                                 return (
                                     <div 
-                                        key={att.id || idx}
+                                        key={att?.id || idx}
                                         style={{ left: `calc(6% + ${pct * 0.88}%)` }}
                                         className="absolute -translate-x-1/2 top-1/2 -translate-y-1/2 group cursor-pointer z-20"
                                         onClick={() => {
@@ -1764,8 +1822,8 @@ const TrainingResultsUI = ({
                                         
                                         {/* Tooltip */}
                                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-slate-900 text-white text-[10px] py-2 px-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 shadow-lg whitespace-nowrap z-30 flex flex-col items-center">
-                                            <span className="font-semibold text-yellow-400">{att.timestamp}</span>
-                                            <span className="mt-1 text-gray-200">{att.wpm} PPM | {att.precision}% Precisión</span>
+                                            <span className="font-semibold text-yellow-400">{att?.timestamp || ''}</span>
+                                            <span className="mt-1 text-gray-200">{attWpm} PPM | {attPrec}% Precisión</span>
                                             <span className="text-[8px] text-gray-400 mt-1 font-normal">Clic para ajustar el filtro</span>
                                             <div className="w-2 h-2 bg-slate-900 rotate-45 absolute top-full -translate-y-1 left-1/2 -translate-x-1/2"></div>
                                         </div>
@@ -1787,14 +1845,14 @@ const TrainingResultsUI = ({
                                     }}
                                     className="border border-slate-200 rounded p-1.5 bg-white text-gray-700 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm cursor-pointer"
                                 >
-                                    {allAttempts.map((att, idx) => (
-                                        <option key={idx} value={idx}>{idx + 1} - {att.timestamp} ({att.wpm} PPM)</option>
+                                    {safeAllAttempts.map((att, idx) => (
+                                        <option key={idx} value={idx}>{idx + 1} - {att?.timestamp || ''} ({Number(att?.wpm) || 0} PPM)</option>
                                     ))}
                                 </select>
                             </div>
                             
                             <div className="text-slate-500 font-bold text-center bg-slate-50 px-3 py-1 rounded-full border border-slate-100 shadow-inner">
-                                Visualizando {filteredAttempts.length} de {allAttempts.length} intentos de esta práctica
+                                Visualizando {filteredAttempts?.length || 0} de {safeAllAttempts.length} intentos de esta práctica
                             </div>
                             
                             <div className="flex items-center space-x-2">
@@ -1808,8 +1866,8 @@ const TrainingResultsUI = ({
                                     }}
                                     className="border border-slate-200 rounded p-1.5 bg-white text-gray-700 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm cursor-pointer"
                                 >
-                                    {allAttempts.map((att, idx) => (
-                                        <option key={idx} value={idx} disabled={idx < startIndex}>{idx + 1} - {att.timestamp} ({att.wpm} PPM)</option>
+                                    {safeAllAttempts.map((att, idx) => (
+                                        <option key={idx} value={idx} disabled={idx < startIndex}>{idx + 1} - {att?.timestamp || ''} ({Number(att?.wpm) || 0} PPM)</option>
                                     ))}
                                 </select>
                             </div>
@@ -1822,7 +1880,7 @@ const TrainingResultsUI = ({
                         Tus intentos anteriores en esta lección:
                     </h4>
                     
-                    {lessonAttempts.length === 0 ? (
+                    {safeLessonAttempts.length === 0 ? (
                         <p className="text-center text-gray-400 text-sm py-4">No hay registros previos para esta lección.</p>
                     ) : (
                         <div className="overflow-x-auto overflow-y-auto max-h-[720px] pr-2">
@@ -1842,41 +1900,48 @@ const TrainingResultsUI = ({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {lessonAttempts.map((att, index) => {
-                                        const totalWritten = (att.correctChars ?? 0) + (att.errorChars ?? 0);
+                                    {safeLessonAttempts.map((att, index) => {
+                                        const attCorrect = Number(att?.correctChars) || 0;
+                                        const attErrors = Number(att?.errorChars) || 0;
+                                        const totalWritten = attCorrect + attErrors;
+                                        const attWpm = Number(att?.wpm) || 0;
+                                        const attPrec = Number(att?.precision) || 0;
+                                        const attDuration = Number(att?.duration) || 0;
+                                        const attStars = Number(att?.stars) || 0;
+
                                         return (
-                                            <tr key={att.id || index} className="text-gray-700 hover:bg-gray-50/50">
-                                                <td className="py-3 px-4 text-left font-medium text-gray-500">{att.timestamp}</td>
+                                            <tr key={att?.id || index} className="text-gray-700 hover:bg-gray-50/50">
+                                                <td className="py-3 px-4 text-left font-medium text-gray-500">{att?.timestamp || ''}</td>
                                                 <td className="py-3 px-4 text-center">
                                                     <div className="flex justify-center text-yellow-400">
                                                         {[1,2,3,4,5].map(starNum => (
-                                                            <Star key={starNum} className={`w-4 h-4 ${starNum <= att.stars ? 'fill-yellow-400' : 'text-gray-200'}`} />
+                                                            <Star key={starNum} className={`w-4 h-4 ${starNum <= attStars ? 'fill-yellow-400' : 'text-gray-200'}`} />
                                                         ))}
                                                     </div>
                                                 </td>
                                                 <td className="py-3 px-4 text-center font-bold text-gray-800 tabular-nums">
-                                                    {Math.round(att.wpm * (att.precision/100) * 100)}
+                                                    {Math.round(attWpm * (attPrec / 100) * 100) || 0}
                                                 </td>
                                                 <td className="py-3 px-4 text-center font-semibold text-gray-900 tabular-nums">
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                                                        att.wpm === maxSpeed 
+                                                        attWpm === maxSpeed 
                                                             ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/30' 
                                                             : ''
                                                     }`}>
-                                                        {Math.round(att.wpm)} ppm
+                                                        {Math.round(attWpm)} ppm
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4 text-center font-medium text-green-600 tabular-nums">{Math.round(att.precision)}%</td>
+                                                <td className="py-3 px-4 text-center font-medium text-green-600 tabular-nums">{Math.round(attPrec)}%</td>
                                                 <td className="py-3 px-4 text-center font-semibold text-slate-700 tabular-nums">{totalWritten}</td>
-                                                <td className="py-3 px-4 text-center font-semibold text-green-600 tabular-nums">{att.correctChars ?? 0}</td>
-                                                <td className="py-3 px-4 text-center font-semibold text-red-500 tabular-nums">{att.errorChars ?? 0}</td>
+                                                <td className="py-3 px-4 text-center font-semibold text-green-600 tabular-nums">{attCorrect}</td>
+                                                <td className="py-3 px-4 text-center font-semibold text-red-500 tabular-nums">{attErrors}</td>
                                                 <td className="py-3 px-4 text-center font-mono text-gray-600 tabular-nums">
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                                                        att.duration === minDuration 
+                                                        attDuration === minDuration 
                                                             ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/30' 
                                                             : ''
                                                     }`}>
-                                                        {formatDur(att.duration)}
+                                                        {formatDur(attDuration)}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-center">
@@ -2482,7 +2547,8 @@ const HandsKeyboardInteractive = React.memo(({ expectedChar, anchorKey }) => {
     );
 });
 
-const Entrenamiento = ({ history, onAddHistory }) => {
+const Entrenamiento = ({ history: rawHistory, onAddHistory }) => {
+    const history = Array.isArray(rawHistory) ? rawHistory : [];
     const [lessonId, setLessonId] = useState(1);
     const [phase, setPhase] = useState('menu'); // menu, typing, results, replay, intro
     const [soundMuted, setSoundMuted] = useState(false);
@@ -2505,7 +2571,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
     const keyErrorMap = useMemo(() => {
         const map = {};
         history.forEach(attempt => {
-            if (attempt.errorIndices && attempt.text) {
+            if (attempt && attempt.errorIndices && attempt.text) {
                 Object.keys(attempt.errorIndices).forEach(idx => {
                     const char = attempt.text[parseInt(idx)];
                     if (char && char !== ' ') {
@@ -2533,7 +2599,8 @@ const Entrenamiento = ({ history, onAddHistory }) => {
             let word = "";
             const len = Math.floor(Math.random() * 3) + 3;
             for (let j = 0; j < len; j++) {
-                word += keys[Math.floor(Math.random() * keys.length)];
+                const char = keys[Math.floor(Math.random() * keys.length)];
+                word += (Math.random() > 0.8 && char.toLowerCase() !== char.toUpperCase()) ? char.toUpperCase() : char;
             }
             patterns.push(word);
         }
@@ -2556,7 +2623,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
 
     // Timeline filter states
     const allAttempts = useMemo(() => {
-        return history.filter(item => item.lessonId === lessonId);
+        return history.filter(item => item && item.lessonId === lessonId);
     }, [history, lessonId]);
 
     const [startIndex, setStartIndex] = useState(0);
@@ -2701,8 +2768,12 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                 else if (precision >= 90) calculatedStars = 3;
                 else if (precision >= 80) calculatedStars = 2;
 
+                const attemptId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+                    ? crypto.randomUUID()
+                    : ('attempt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
+
                 const newResult = {
-                    id: crypto.randomUUID(),
+                    id: attemptId,
                     lessonId: lesson.id,
                     lessonTitle: lesson.title,
                     timestamp: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) + ' - ' + new Date().toLocaleDateString('es-AR', {day: 'numeric', month: 'short'}),
@@ -2721,6 +2792,8 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                 onAddHistory(newResult);
 
                 setMetrics({
+                    id: attemptId,
+                    timestamp: newResult.timestamp,
                     wpm, 
                     precision, 
                     duration: durationSecs, 
@@ -2883,7 +2956,7 @@ const Entrenamiento = ({ history, onAddHistory }) => {
                                 </h3>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                                     {lessons.map((l) => {
-                                        const attempts = history.filter(h => h.lessonId === l.id);
+                                        const attempts = history.filter(h => h && h.lessonId === l.id);
                                         const bestStars = attempts.reduce((max, curr) => curr.stars > max ? curr.stars : max, 0);
                                         const completed = attempts.length > 0;
                                         
@@ -3196,72 +3269,88 @@ const Entrenamiento = ({ history, onAddHistory }) => {
             )}
 
             {phase === 'results' && (
-                <div className="w-full">
-                    <TrainingResultsUI 
-                        metrics={metrics} 
-                        onRetry={() => startLesson(lessonId)} 
-                        onNext={() => {
-                            const currentIndex = TRAINING_LESSONS.findIndex(l => l.id === lessonId);
-                            if (currentIndex !== -1 && currentIndex + 1 < TRAINING_LESSONS.length) {
-                                startLesson(TRAINING_LESSONS[currentIndex + 1].id);
-                            } else {
-                                setPhase('menu');
-                            }
-                        }} 
-                        onBack={() => setPhase('menu')}
-                        lessonAttempts={filteredTableAttempts} 
-                        onPlayReplay={handlePlayReplay}
-                        allAttempts={allAttempts}
-                        startIndex={startIndex}
-                        setStartIndex={setStartIndex}
-                        endIndex={endIndex}
-                        setEndIndex={setEndIndex}
-                        filteredAttempts={filteredAttempts}
-                    />
-                    <EvolutionCharts filteredAttempts={filteredAttempts} />
-                </div>
+                <ErrorBoundary
+                    key="training-results-boundary"
+                    resetKey={metrics?.id || lessonId}
+                    fallbackTitle="Error al visualizar resultados del entrenamiento"
+                    fallbackMessage="Ocurrió un inconveniente al generar los gráficos o tablas del intento. La práctica quedó guardada exitosamente."
+                    onReset={() => setPhase('menu')}
+                >
+                    <div className="w-full">
+                        <TrainingResultsUI 
+                            metrics={metrics} 
+                            onRetry={() => startLesson(lessonId)} 
+                            onNext={() => {
+                                const currentIndex = TRAINING_LESSONS.findIndex(l => l.id === lessonId);
+                                if (currentIndex !== -1 && currentIndex + 1 < TRAINING_LESSONS.length) {
+                                    startLesson(TRAINING_LESSONS[currentIndex + 1].id);
+                                } else {
+                                    setPhase('menu');
+                                }
+                            }} 
+                            onBack={() => setPhase('menu')}
+                            lessonAttempts={filteredTableAttempts} 
+                            onPlayReplay={handlePlayReplay}
+                            allAttempts={allAttempts}
+                            startIndex={startIndex}
+                            setStartIndex={setStartIndex}
+                            endIndex={endIndex}
+                            setEndIndex={setEndIndex}
+                            filteredAttempts={filteredAttempts}
+                        />
+                        <EvolutionCharts filteredAttempts={filteredAttempts} />
+                    </div>
+                </ErrorBoundary>
             )}
 
             {phase === 'replay' && replayData && (
-                <div className="w-full bg-white p-8 rounded-2xl shadow-sm border border-gray-200 text-center">
-                    <div className="flex justify-between items-center mb-6 border-b pb-4">
-                        <h3 className="font-bold text-gray-800 text-lg">Reproducción de Intento - Lección {replayData.lessonId}</h3>
-                        <button onClick={() => setPhase('results')} className="text-blue-600 hover:text-blue-800 font-semibold flex items-center">
-                            <ArrowLeft className="w-4 h-4 mr-1"/> Volver a Resultados
-                        </button>
-                    </div>
-                    <div className="text-sm text-gray-500 mb-4">
-                        Mostrando estadísticas registradas el {replayData.timestamp}
-                    </div>
-                    <div className="bg-slate-50 p-6 rounded-xl border border-gray-100 font-mono text-xl mb-6 shadow-inner whitespace-pre-wrap break-all">
-                        {replayData.text.split('').map((char, index) => {
-                            const hasError = replayData.errorIndices && replayData.errorIndices[index];
-                            const charToShow = char === ' ' ? '␣' : char;
-                            const charClass = hasError 
-                                ? "bg-red-100 text-red-700 border-b-2 border-red-500 font-semibold" 
-                                : "bg-green-50 text-green-700";
-                            return (
-                                <span key={index} className={`${charClass} px-0.5 mx-[1px] rounded inline-block`}>
-                                    {charToShow}
-                                </span>
-                            );
-                        })}
-                    </div>
-                    <div className="grid grid-cols-3 gap-6 max-w-md mx-auto mb-6">
-                        <div className="p-4 bg-blue-50 rounded-xl border">
-                            <span className="block text-xs text-gray-500 uppercase font-semibold">Velocidad</span>
-                            <strong className="text-xl text-blue-700 tabular-nums">{replayData.wpm} PPM</strong>
+                <ErrorBoundary
+                    key="training-replay-boundary"
+                    resetKey={replayData?.id || replayData?.timestamp}
+                    fallbackTitle="Error al reproducir la práctica"
+                    fallbackMessage="No se pudo reconstruir la repetición visual del ejercicio. El historial permanece intacto."
+                    onReset={() => setPhase('results')}
+                >
+                    <div className="w-full bg-white p-8 rounded-2xl shadow-sm border border-gray-200 text-center">
+                        <div className="flex justify-between items-center mb-6 border-b pb-4">
+                            <h3 className="font-bold text-gray-800 text-lg">Reproducción de Intento - Lección {replayData?.lessonId ?? ''}</h3>
+                            <button onClick={() => setPhase('results')} className="text-blue-600 hover:text-blue-800 font-semibold flex items-center">
+                                <ArrowLeft className="w-4 h-4 mr-1"/> Volver a Resultados
+                            </button>
                         </div>
-                        <div className="p-4 bg-green-50 rounded-xl border">
-                            <span className="block text-xs text-gray-500 uppercase font-semibold">Precisión</span>
-                            <strong className="text-xl text-green-700 tabular-nums">{replayData.precision}%</strong>
+                        <div className="text-sm text-gray-500 mb-4">
+                            Mostrando estadísticas registradas el {replayData?.timestamp || 'Fecha desconocida'}
                         </div>
-                        <div className="p-4 bg-purple-50 rounded-xl border">
-                            <span className="block text-xs text-gray-500 uppercase font-semibold">Duración</span>
-                            <strong className="text-xl text-purple-700">{Math.round(replayData.duration)}s</strong>
+                        <div className="bg-slate-50 p-6 rounded-xl border border-gray-100 font-mono text-xl mb-6 shadow-inner whitespace-pre-wrap break-all">
+                            {(replayData?.text || '').split('').map((char, index) => {
+                                const hasError = replayData?.errorIndices && replayData.errorIndices[index];
+                                const charToShow = char === ' ' ? '␣' : char;
+                                const charClass = hasError 
+                                    ? "bg-red-100 text-red-700 border-b-2 border-red-500 font-semibold" 
+                                    : "bg-green-50 text-green-700";
+                                return (
+                                    <span key={index} className={`${charClass} px-0.5 mx-[1px] rounded inline-block`}>
+                                        {charToShow}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                        <div className="grid grid-cols-3 gap-6 max-w-md mx-auto mb-6">
+                            <div className="p-4 bg-blue-50 rounded-xl border">
+                                <span className="block text-xs text-gray-500 uppercase font-semibold">Velocidad</span>
+                                <strong className="text-xl text-blue-700 tabular-nums">{Math.round(Number(replayData?.wpm) || 0)} PPM</strong>
+                            </div>
+                            <div className="p-4 bg-green-50 rounded-xl border">
+                                <span className="block text-xs text-gray-500 uppercase font-semibold">Precisión</span>
+                                <strong className="text-xl text-green-700 tabular-nums">{Math.round(Number(replayData?.precision) || 0)}%</strong>
+                            </div>
+                            <div className="p-4 bg-purple-50 rounded-xl border">
+                                <span className="block text-xs text-gray-500 uppercase font-semibold">Duración</span>
+                                <strong className="text-xl text-purple-700">{Math.round(Number(replayData?.duration) || 0)}s</strong>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </ErrorBoundary>
             )}
         </div>
     );
@@ -3431,12 +3520,19 @@ const PreparacionTeorica = () => {
 
     // History and versions of theoretical texts
     const [activeTextId, setActiveTextId] = useState(null);
-    const [savedTexts, setSavedTexts] = useState(() => storageService.getTheoryHistory());
+    const [rawSavedTexts, _setSavedTexts] = useState(() => {
+        const initial = storageService.getTheoryHistory();
+        return Array.isArray(initial) ? initial : [];
+    });
+    const savedTexts = Array.isArray(rawSavedTexts) ? rawSavedTexts : [];
+    const setSavedTexts = (val) => {
+        _setSavedTexts(prev => {
+            const resolved = typeof val === 'function' ? val(prev) : val;
+            return Array.isArray(resolved) ? resolved : (resolved ? [resolved] : []);
+        });
+    };
 
-    useEffect(() => {
-        storageService.safeSet('dactilografia_teoria_historial', savedTexts);
-    }, [savedTexts]);
-
+    const togglePlaybackRef = useRef(null);
     const [editorFontSize, setEditorFontSize] = useState('text-sm');
 
     useEffect(() => {
@@ -3453,7 +3549,7 @@ const PreparacionTeorica = () => {
 
             if (e.code === 'Space') {
                 e.preventDefault();
-                togglePlayback();
+                togglePlaybackRef.current?.();
             } else if (e.code === 'ArrowLeft' && audioRef.current && mp3Url) {
                 e.preventDefault();
                 audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 5);
@@ -3715,6 +3811,9 @@ const PreparacionTeorica = () => {
             }
         }
     };
+    useEffect(() => {
+        togglePlaybackRef.current = togglePlayback;
+    });
 
     const stopPlayback = () => {
         if (audioRef.current) {
@@ -3892,24 +3991,26 @@ const PreparacionTeorica = () => {
         if (activeTextId) {
             const overwrite = window.confirm("¿Deseas sobreescribir el texto seleccionado en el historial? (Mantiene esta como la última versión correcta)");
             if (overwrite) {
-                setSavedTexts(prev => prev.map(item => 
-                    item.id === activeTextId 
-                        ? { ...item, title: title || item.title, content: text, timestamp }
-                        : item
-                ));
+                const updatedList = storageService.saveTheoryNote({
+                    id: activeTextId,
+                    title: title || 'Sin Título',
+                    content: text,
+                    timestamp
+                });
+                setSavedTexts(updatedList);
                 setError(`Texto "${title || 'Sin Título'}" actualizado en el historial.`);
                 return;
             }
         }
 
         const newId = Date.now().toString();
-        const newItem = {
+        const updatedList = storageService.saveTheoryNote({
             id: newId,
             title: title || "Texto sin título",
             content: text,
             timestamp
-        };
-        setSavedTexts(prev => [newItem, ...prev]);
+        });
+        setSavedTexts(updatedList);
         setActiveTextId(newId);
         setError(`Texto "${title || "Texto sin título"}" guardado en el historial.`);
     };
@@ -4410,9 +4511,9 @@ const PreparacionTeorica = () => {
                         <button 
                             onClick={() => {
                                 if (window.confirm("¿Seguro que deseas borrar todo el historial de apuntes teóricos?")) {
+                                    storageService.clearTheoryHistory();
                                     setSavedTexts([]);
                                     setActiveTextId(null);
-                                    localStorage.removeItem('dactilografia_teoria_historial');
                                 }
                             }}
                             className="text-[10px] text-red-500 hover:text-red-700 font-semibold border border-red-200 rounded px-2.5 py-1 hover:bg-red-50 transition"
@@ -4457,7 +4558,8 @@ const PreparacionTeorica = () => {
                                     <button 
                                         onClick={() => {
                                             if (window.confirm(`¿Seguro que deseas eliminar "${item.title}" del historial?`)) {
-                                                setSavedTexts(prev => prev.filter(x => x.id !== item.id));
+                                                storageService.deleteTheoryNote(item.id);
+                                                setSavedTexts(storageService.getTheoryHistory());
                                                 if (activeTextId === item.id) setActiveTextId(null);
                                             }
                                         }}
@@ -4481,7 +4583,17 @@ const PreparacionTeorica = () => {
 export default function App() {
     const [activeTab, setActiveTab] = useState('simulador');
     const [theme, setTheme] = useState(() => storageService.getTheme());
-    const [history, setHistory] = useState(() => storageService.getTrainingHistory());
+    const [rawHistory, _setHistory] = useState(() => {
+        const initial = storageService.getTrainingHistory();
+        return Array.isArray(initial) ? initial : [];
+    });
+    const history = Array.isArray(rawHistory) ? rawHistory : [];
+    const setHistory = (val) => {
+        _setHistory(prev => {
+            const resolved = typeof val === 'function' ? val(prev) : val;
+            return Array.isArray(resolved) ? resolved : (resolved ? [resolved] : []);
+        });
+    };
 
     useEffect(() => {
         storageService.setTheme(theme);
@@ -4489,7 +4601,7 @@ export default function App() {
 
     const handleAddHistory = (item) => {
         const updated = storageService.saveTrainingAttempt(item);
-        setHistory(updated);
+        setHistory(Array.isArray(updated) ? updated : (updated ? [updated] : []));
     };
 
     return (
@@ -4497,9 +4609,17 @@ export default function App() {
             <Header activeTab={activeTab} setActiveTab={setActiveTab} theme={theme} setTheme={setTheme} />
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <UserBar />
-                {activeTab === 'simulador' && <Simulador />}
-                {activeTab === 'entrenamiento' && <Entrenamiento history={history} onAddHistory={handleAddHistory} />}
-                {activeTab === 'teoria' && <PreparacionTeorica />}
+                <ErrorBoundary
+                    key={activeTab}
+                    resetKey={activeTab}
+                    fallbackTitle="Error al cargar la sección seleccionada"
+                    fallbackMessage="Ocurrió un inconveniente al renderizar la sección. Sus datos de usuario y prácticas se encuentran a salvo."
+                    onReset={() => setActiveTab('simulador')}
+                >
+                    {activeTab === 'simulador' && <Simulador />}
+                    {activeTab === 'entrenamiento' && <Entrenamiento history={history} onAddHistory={handleAddHistory} />}
+                    {activeTab === 'teoria' && <PreparacionTeorica />}
+                </ErrorBoundary>
             </main>
         </div>
     );

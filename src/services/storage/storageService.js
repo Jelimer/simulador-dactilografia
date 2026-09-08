@@ -321,6 +321,32 @@ export function safeRemove(key) {
   }
 }
 
+/**
+ * Adjunta propiedades de metadatos de un objeto sobre un Array de forma segura,
+ * garantizando que ninguna propiedad nativa ('length'), índice numérico ('0', '1', etc.)
+ * o método/propiedad del prototipo de Array (map, filter, forEach, slice, reduce, etc.)
+ * sea sobreescrito o corrompa la funcionalidad nativa de lista iterable.
+ * @param {Array} targetArr
+ * @param {Object} sourceObj
+ * @returns {Array}
+ */
+export function attachSafeProps(targetArr, sourceObj) {
+  if (!sourceObj || typeof sourceObj !== 'object' || !Array.isArray(targetArr)) {
+    return targetArr;
+  }
+  for (const key of Object.keys(sourceObj)) {
+    if (key === 'length' || /^\d+$/.test(key) || key in Array.prototype) {
+      continue;
+    }
+    try {
+      targetArr[key] = sourceObj[key];
+    } catch {
+      // Ignorar asignaciones bloqueadas en entornos estrictos
+    }
+  }
+  return targetArr;
+}
+
 // ==========================================
 // 1. GESTIÓN DE USUARIO (dactilografia_userName)
 // ==========================================
@@ -483,7 +509,7 @@ export function saveCustomText(text) {
   safeSet(STORAGE_KEYS.CUSTOM_LEGAL_TEXTS, updatedList);
   safeSet(STORAGE_KEYS.CUSTOM_TEXTS_ALIAS, updatedList);
 
-  return newObj;
+  return attachSafeProps(updatedList, newObj);
 }
 
 export function deleteCustomText(id) {
@@ -601,12 +627,12 @@ export function getSimHistory() {
 
 export function saveSimAttempt(attempt) {
   const norm = normalizeSimAttempt(attempt);
-  if (!norm) return null;
+  if (!norm) return getSimHistory();
 
   const current = getSimHistory();
   const updated = [norm, ...current];
   safeSet(STORAGE_KEYS.SIM_HISTORY, updated);
-  return norm;
+  return attachSafeProps(updated, norm);
 }
 
 export function deleteSimAttempt(id) {
@@ -679,12 +705,12 @@ export function getTrainingHistory() {
 
 export function saveTrainingAttempt(attempt) {
   const norm = normalizeTrainingAttempt(attempt);
-  if (!norm) return null;
+  if (!norm) return getTrainingHistory();
 
   const current = getTrainingHistory();
   const updated = [...current, norm];
   safeSet(STORAGE_KEYS.TRAINING_HISTORY, updated);
-  return norm;
+  return attachSafeProps(updated, norm);
 }
 
 export function clearTrainingHistory() {
@@ -756,7 +782,7 @@ export function saveTheoryNote(note) {
   }
 
   safeSet(STORAGE_KEYS.THEORY_HISTORY, updated);
-  return norm;
+  return attachSafeProps(updated, norm);
 }
 
 export function deleteTheoryNote(id) {
@@ -933,6 +959,7 @@ const storageService = {
   saveCustomText,
   deleteCustomText,
   generateCustomTextId,
+  attachSafeProps,
   getSimHistory,
   saveSimAttempt,
   deleteSimAttempt,
