@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import storageService from './services/storage/storageService';
 import { 
     Play, RotateCcw, CheckCircle, Clock, User, Users, BookOpen, Settings,
     Star, Volume2, VolumeX, Award, ArrowLeft, History, Eye, Trash,
@@ -522,7 +523,7 @@ const Header = ({ activeTab, setActiveTab, theme, setTheme }) => {
 
 const UserBar = () => {
     const [userName, setUserName] = useState(() => {
-        return localStorage.getItem('dactilografia_userName') || 'POSTULANTE_001';
+        return storageService.getUserName();
     });
     const [isEditing, setIsEditing] = useState(false);
     const [tempName, setTempName] = useState(userName);
@@ -530,7 +531,7 @@ const UserBar = () => {
     const handleSaveName = () => {
         const cleaned = tempName.trim() || 'POSTULANTE_001';
         setUserName(cleaned);
-        localStorage.setItem('dactilografia_userName', cleaned);
+        storageService.setUserName(cleaned);
         setIsEditing(false);
     };
 
@@ -586,24 +587,16 @@ const Simulador = () => {
     const [strictWarning, setStrictWarning] = useState(false);
     const [showActaModal, setShowActaModal] = useState(false);
     const textareaRef = useRef(null);
+    const referenceContainerRef = useRef(null);
+    const activeWordRef = useRef(null);
 
-    // Textos personalizados
-    const [customLegalTexts, setCustomLegalTexts] = useState(() => {
-        try {
-            const saved = localStorage.getItem('dactilografia_custom_legal_texts');
-            return saved ? JSON.parse(saved) : [];
-        } catch (e) {
-            return [];
-        }
-    });
+    // Textos personalizados blindados con storageService
+    const [customLegalTexts, setCustomLegalTexts] = useState(() => storageService.getCustomTexts());
     const [isCreatingCustomText, setIsCreatingCustomText] = useState(false);
     const [newCustomTitle, setNewCustomTitle] = useState('');
     const [newCustomContent, setNewCustomContent] = useState('');
 
-    const [simHistory, setSimHistory] = useState(() => {
-        const saved = localStorage.getItem('dactilografia_simulador_historial');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [simHistory, setSimHistory] = useState(() => storageService.getSimHistory());
 
     const allTexts = useMemo(() => {
         return [...LEGAL_TEXTS, ...customLegalTexts];
@@ -611,9 +604,32 @@ const Simulador = () => {
 
     const selectedTextObject = allTexts.find(t => t.id === selectedTextId) || LEGAL_TEXTS[0];
 
-    const candidateName = useMemo(() => {
-        return localStorage.getItem('dactilografia_userName') || 'POSTULANTE_001';
-    }, []);
+    const referenceWords = useMemo(() => {
+        return selectedTextObject?.content ? selectedTextObject.content.trim().split(/\s+/) : [];
+    }, [selectedTextObject]);
+
+    const currentWordIndex = useMemo(() => {
+        if (!typedText || !typedText.trim()) return 0;
+        const words = typedText.trim().split(/\s+/);
+        const endsWithSpace = /\s$/.test(typedText);
+        return endsWithSpace ? words.length : Math.max(0, words.length - 1);
+    }, [typedText]);
+
+    // Auto-scroll inteligente: mantiene la palabra activa siempre visible y centrada
+    useEffect(() => {
+        if (activeWordRef.current && referenceContainerRef.current) {
+            const container = referenceContainerRef.current;
+            const activeEl = activeWordRef.current;
+            const containerRect = container.getBoundingClientRect();
+            const activeRect = activeEl.getBoundingClientRect();
+            const relativeTop = activeRect.top - containerRect.top;
+            if (relativeTop > container.clientHeight * 0.55 || relativeTop < 20) {
+                activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }, [currentWordIndex]);
+
+    const candidateName = storageService.getUserName();
 
     useEffect(() => {
         window.isTypingActive = isActive;
@@ -670,9 +686,8 @@ const Simulador = () => {
             ...evalResult
         };
 
-        const updatedHistory = [newResult, ...simHistory];
+        const updatedHistory = storageService.saveSimAttempt(newResult);
         setSimHistory(updatedHistory);
-        localStorage.setItem('dactilografia_simulador_historial', JSON.stringify(updatedHistory));
         setResults(newResult);
         setPhase('results');
     };
@@ -688,9 +703,8 @@ const Simulador = () => {
             content: newCustomContent.trim(),
             isCustom: true
         };
-        const updated = [...customLegalTexts, newObj];
+        const updated = storageService.saveCustomText(newObj);
         setCustomLegalTexts(updated);
-        localStorage.setItem('dactilografia_custom_legal_texts', JSON.stringify(updated));
         setSelectedTextId(newObj.id);
         setIsCreatingCustomText(false);
         setNewCustomTitle('');
@@ -701,7 +715,7 @@ const Simulador = () => {
         e.stopPropagation();
         const updated = simHistory.filter(x => x.id !== id);
         setSimHistory(updated);
-        localStorage.setItem('dactilografia_simulador_historial', JSON.stringify(updated));
+        storageService.safeSet('dactilografia_simulador_historial', updated);
     };
 
     const formatTime = (seconds) => {
@@ -941,8 +955,30 @@ const Simulador = () => {
                         </div>
                     )}
 
-                    <div className="mb-6 p-4 bg-[#f8fafc] border rounded text-justify font-serif text-gray-800 select-none text-base leading-relaxed max-h-48 overflow-y-auto">
-                        {selectedTextObject.content}
+                    {/* Contenedor de Texto con Auto-Scroll Inteligente y Resaltado de Palabra Activa */}
+                    <div 
+                        ref={referenceContainerRef}
+                        className="mb-6 p-4 bg-[#f8fafc] border rounded text-justify font-serif text-gray-800 select-none text-base leading-relaxed max-h-48 overflow-y-auto relative scroll-smooth shadow-inner"
+                    >
+                        {referenceWords.map((word, idx) => {
+                            const isCurrent = idx === currentWordIndex;
+                            const isPast = idx < currentWordIndex;
+                            return (
+                                <span
+                                    key={idx}
+                                    ref={isCurrent ? activeWordRef : null}
+                                    className={`inline-block mr-1.5 px-1 py-0.5 rounded transition-all duration-150 ${
+                                        isCurrent 
+                                            ? 'bg-blue-600 text-white font-bold shadow-sm ring-2 ring-blue-300 scale-105' 
+                                            : isPast 
+                                                ? 'text-gray-400 opacity-75' 
+                                                : 'text-gray-800'
+                                    }`}
+                                >
+                                    {word}
+                                </span>
+                            );
+                        })}
                     </div>
 
                     <textarea
@@ -1141,7 +1177,7 @@ const Simulador = () => {
 // 5. MÓDULO: ENTRENAMIENTO
 // ==========================================
 
-const KeyboardLayout = ({ expectedChar }) => {
+const KeyboardLayout = React.memo(({ expectedChar }) => {
     return (
         <div className="bg-gray-200 p-4 rounded-xl shadow-inner mt-6 max-w-3xl mx-auto border border-gray-300">
             {KEYBOARD_ROWS.map((row, rIdx) => (
@@ -1177,9 +1213,9 @@ const KeyboardLayout = ({ expectedChar }) => {
             </div>
         </div>
     );
-};
+});
 
-const HandsGuide = ({ expectedChar }) => {
+const HandsGuide = React.memo(({ expectedChar }) => {
     const targetFinger = getFingerForKey(expectedChar);
     
     const renderHand = (isLeft) => {
@@ -1209,7 +1245,7 @@ const HandsGuide = ({ expectedChar }) => {
             {renderHand(false)}
         </div>
     );
-};
+});
 
 // ==========================================
 // COMPONENTE: GRÁFICOS DE EVOLUCIÓN
@@ -2196,7 +2232,7 @@ const HandsKeyboardIntro = ({ step, lessonId }) => {
     );
 };
 
-const HandsKeyboardInteractive = ({ expectedChar, anchorKey }) => {
+const HandsKeyboardInteractive = React.memo(({ expectedChar, anchorKey }) => {
     const row1 = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'];
     const row2 = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ñ'];
     const row3 = ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '-'];
@@ -2444,7 +2480,7 @@ const HandsKeyboardInteractive = ({ expectedChar, anchorKey }) => {
             </svg>
         </div>
     );
-};
+});
 
 const Entrenamiento = ({ history, onAddHistory }) => {
     const [lessonId, setLessonId] = useState(1);
@@ -3395,19 +3431,10 @@ const PreparacionTeorica = () => {
 
     // History and versions of theoretical texts
     const [activeTextId, setActiveTextId] = useState(null);
-    const [savedTexts, setSavedTexts] = useState(() => {
-        try {
-            const saved = localStorage.getItem('dactilografia_teoria_historial');
-            return saved ? JSON.parse(saved) : [];
-        } catch (e) {
-            return [];
-        }
-    });
+    const [savedTexts, setSavedTexts] = useState(() => storageService.getTheoryHistory());
 
     useEffect(() => {
-        try {
-            localStorage.setItem('dactilografia_teoria_historial', JSON.stringify(savedTexts));
-        } catch (e) {}
+        storageService.safeSet('dactilografia_teoria_historial', savedTexts);
     }, [savedTexts]);
 
     const [editorFontSize, setEditorFontSize] = useState('text-sm');
@@ -4453,36 +4480,16 @@ const PreparacionTeorica = () => {
 // ==========================================
 export default function App() {
     const [activeTab, setActiveTab] = useState('simulador');
-    const [theme, setTheme] = useState(() => {
-        try {
-            return localStorage.getItem('dactilografia_theme') || 'dark';
-        } catch (e) {
-            return 'dark';
-        }
-    });
-    const [history, setHistory] = useState(() => {
-        try {
-            const saved = localStorage.getItem('dactilografia_historial');
-            return saved ? JSON.parse(saved) : [];
-        } catch (e) {
-            return [];
-        }
-    });
+    const [theme, setTheme] = useState(() => storageService.getTheme());
+    const [history, setHistory] = useState(() => storageService.getTrainingHistory());
 
     useEffect(() => {
-        try {
-            localStorage.setItem('dactilografia_theme', theme);
-        } catch (e) {}
+        storageService.setTheme(theme);
     }, [theme]);
 
-    useEffect(() => {
-        try {
-            localStorage.setItem('dactilografia_historial', JSON.stringify(history));
-        } catch (e) {}
-    }, [history]);
-
     const handleAddHistory = (item) => {
-        setHistory(prev => [...prev, item]);
+        const updated = storageService.saveTrainingAttempt(item);
+        setHistory(updated);
     };
 
     return (
