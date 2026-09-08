@@ -26,7 +26,8 @@ const TIERS = [
             'tier1-functional/test-judicial-evaluator.test.js',
             'tier1-functional/test-strict-mode.test.js',
             'tier1-functional/test-training-lessons.test.js',
-            'tier1-functional/test-array-returns-and-completion-flows.test.js'
+            'tier1-functional/test-array-returns-and-completion-flows.test.js',
+            'tier1-functional/test-evolution-charts-redesign.test.js'
         ]
     },
     {

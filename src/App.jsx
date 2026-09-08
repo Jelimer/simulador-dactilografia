@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import storageService from './services/storage/storageService';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import EvolutionCharts from './components/EvolutionCharts.jsx';
 import { 
     Play, RotateCcw, CheckCircle, Clock, User, Users, BookOpen, Settings,
     Star, Volume2, VolumeX, Award, ArrowLeft, History, Eye, Trash,
@@ -1282,227 +1283,9 @@ const HandsGuide = React.memo(({ expectedChar }) => {
 });
 
 // ==========================================
-// COMPONENTE: GRÁFICOS DE EVOLUCIÓN
+// COMPONENTE: GRÁFICOS DE EVOLUCIÓN (REDISEÑADO)
+// Implementado de forma modular en ./components/EvolutionCharts.jsx
 // ==========================================
-// ==========================================
-// COMPONENTE: GRÁFICOS DE EVOLUCIÓN
-// ==========================================
-const EvolutionCharts = ({ filteredAttempts }) => {
-    const validAttempts = useMemo(() => {
-        return (Array.isArray(filteredAttempts) ? filteredAttempts : [])
-            .filter(a => a && typeof a === 'object');
-    }, [filteredAttempts]);
-
-    if (!validAttempts || validAttempts.length === 0) {
-        return null;
-    }
-
-    const maxWpm = Math.max(...validAttempts.map(a => Number(a?.wpm) || 0), 30);
-
-    // Calculemos los rangos dinámicos para evitar que se vean aplastados
-    const wpms = validAttempts.map(a => Number(a?.wpm) || 0);
-    const precs = validAttempts.map(a => Number(a?.precision) || 0);
-
-    const minWpmVal = Math.min(...wpms);
-    const maxWpmVal = Math.max(...wpms);
-    let minW = minWpmVal - 2;
-    let maxW = maxWpmVal + 2;
-    if (minW < 0) minW = 0;
-    if (maxW === minW) {
-        minW = Math.max(0, minW - 5);
-        maxW = maxW + 5;
-    }
-    const wpmRange = (maxW - minW) || 1;
-
-    const minPrecVal = Math.min(...precs);
-    const maxPrecVal = Math.max(...precs);
-    let minP = minPrecVal - 2;
-    let maxP = maxPrecVal + 2;
-    if (minP < 0) minP = 0;
-    if (maxP > 100) maxP = 100;
-    if (maxP === minP) {
-        minP = Math.max(0, minP - 5);
-        maxP = Math.min(100, maxP + 5);
-    }
-    const precRange = (maxP - minP) || 1;
-
-    // Prepare points for combined chart
-    const paddingX = 40;
-    const paddingY = 40;
-    const plotW = 520;
-
-    const points = validAttempts.map((a, idx) => {
-        const x = validAttempts.length === 1 
-            ? paddingX + plotW / 2 
-            : paddingX + (idx / (validAttempts.length - 1 || 1)) * plotW;
-        
-        const aPrec = Number(a?.precision) || 0;
-        const aWpm = Number(a?.wpm) || 0;
-        // Mapeo dinámico e independiente a bandas verticales
-        // Precisión: rango vertical superior [40, 180] (altura de 140px)
-        const y_prec = 180 - ((aPrec - minP) / precRange) * 140;
-        
-        // Velocidad: rango vertical inferior [220, 360] (altura de 140px)
-        const y_wpm = 360 - ((aWpm - minW) / wpmRange) * 140;
-        
-        return { x, y_wpm, y_prec, wpm: aWpm, precision: aPrec, timeOnly: a?.timeOnly || '' };
-    });
-
-    const wpmPath = points.length > 1 ? points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y_wpm}`).join(' ') : '';
-    const precPath = points.length > 1 ? points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y_prec}`).join(' ') : '';
-    const wpmAreaPath = points.length > 1 ? `${wpmPath} L ${points[points.length - 1].x} 360 L ${points[0].x} 360 Z` : '';
-
-    return (
-        <div className="w-full space-y-6 mt-8">
-            {/* Gráficos de Evolución */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                {/* Gráfico de Velocidad */}
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-                    <h4 className="text-center text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Velocidad PPM</h4>
-                    <div className="h-36 flex items-end justify-around border-b border-gray-200 relative mt-6 px-2">
-                        <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-0 pointer-events-none"></div>
-                        <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-1/2 pointer-events-none"></div>
-                        
-                        {validAttempts.map((attempt, idx) => {
-                            const attWpm = Number(attempt?.wpm) || 0;
-                            const pctHeight = Math.max(5, Math.min(100, (attWpm / maxWpm) * 100));
-                            return (
-                                <div key={attempt?.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
-                                    <span 
-                                        style={{ bottom: `calc(${pctHeight}% + 4px)` }}
-                                        className="absolute text-[10px] font-bold text-slate-700 whitespace-nowrap bg-white/80 px-1 rounded shadow-sm border border-slate-100/50"
-                                    >
-                                        {Math.round(attWpm)}
-                                    </span>
-                                    <div 
-                                        style={{ height: `${pctHeight}%` }} 
-                                        className="w-full bg-[#3e5c76] rounded-t hover:bg-blue-600 transition-all duration-500 shadow-sm"
-                                        title={`${attempt?.timestamp || ''}: ${attWpm} PPM`}
-                                    ></div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <div className="flex justify-around mt-2 px-2">
-                        {validAttempts.map((att, idx) => (
-                            <span key={idx} className="w-8 text-center text-[9px] text-gray-400 whitespace-nowrap overflow-visible leading-tight">
-                                {att?.timeOnly || ''}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Gráfico de Precisión */}
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-                    <h4 className="text-center text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Precisión %</h4>
-                    <div className="h-36 flex items-end justify-around border-b border-gray-200 relative mt-6 px-2">
-                        <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-0 pointer-events-none"></div>
-                        <div className="absolute left-0 right-0 border-t border-dashed border-gray-100 top-1/2 pointer-events-none"></div>
-                        
-                        {validAttempts.map((attempt, idx) => {
-                            const attPrec = Number(attempt?.precision) || 0;
-                            const pctHeight = Math.max(0, Math.min(100, attPrec)); 
-                            return (
-                                <div key={attempt?.id || idx} className="h-full w-8 flex flex-col justify-end items-center group relative z-10">
-                                    <span 
-                                        style={{ bottom: `calc(${pctHeight}% + 8px)` }}
-                                        className="absolute text-[10px] font-bold text-slate-700 whitespace-nowrap bg-white/80 px-1 rounded shadow-sm border border-slate-100/50 transform -translate-y-1/2"
-                                    >
-                                        {Math.round(attPrec)}%
-                                    </span>
-                                    <div className="absolute w-full h-full flex flex-col justify-end items-center pointer-events-none">
-                                        <div style={{ bottom: `${pctHeight}%` }} className="absolute w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow transform translate-y-1/2"></div>
-                                        <div style={{ height: `${pctHeight}%` }} className="w-0.5 bg-blue-100"></div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <div className="flex justify-around mt-2 px-2">
-                        {validAttempts.map((att, idx) => (
-                            <span key={idx} className="w-8 text-center text-[9px] text-gray-400 whitespace-nowrap overflow-visible leading-tight">
-                                {att?.timeOnly || ''}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Nuevo Gráfico Combinado de Velocidad y Precisión */}
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col w-full">
-                <div className="flex flex-wrap items-center justify-between border-b pb-3 mb-4 gap-2">
-                    <div>
-                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700">Velocidad y Precisión Combinadas</h4>
-                        <span className="text-[10px] text-slate-400">Evolución comparada de PPM y Precisión (%) en la misma escala temporal</span>
-                    </div>
-                    {/* Leyenda */}
-                    <div className="flex items-center space-x-4 text-xs font-semibold">
-                        <div className="flex items-center space-x-1.5">
-                            <span className="w-3 h-3 bg-[#3e5c76] rounded-full inline-block"></span>
-                            <span className="text-gray-600">Velocidad (PPM)</span>
-                        </div>
-                        <div className="flex items-center space-x-1.5">
-                            <span className="w-3 h-3 bg-[#22c55e] rounded-full inline-block"></span>
-                            <span className="text-gray-600">Precisión (%)</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="relative w-full h-[400px] px-2 select-none overflow-visible">
-                    <svg width="100%" height="100%" viewBox="0 0 600 400" preserveAspectRatio="none" className="overflow-visible">
-                        <defs>
-                            <linearGradient id="speedCombinedGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#3e5c76" stopOpacity="0.12" />
-                                <stop offset="100%" stopColor="#3e5c76" stopOpacity="0.0" />
-                            </linearGradient>
-                        </defs>
-                        
-                        {/* Líneas de Guía para Precisión */}
-                        <line x1={paddingX} y1={40} x2={paddingX + plotW} y2={40} stroke="#f1f5f9" strokeDasharray="3 3" />
-                        <line x1={paddingX} y1={110} x2={paddingX + plotW} y2={110} stroke="#f1f5f9" strokeDasharray="3 3" />
-                        <line x1={paddingX} y1={180} x2={paddingX + plotW} y2={180} stroke="#e2e8f0" strokeDasharray="3 3" />
-                        
-                        {/* Líneas de Guía para Velocidad */}
-                        <line x1={paddingX} y1={220} x2={paddingX + plotW} y2={220} stroke="#f1f5f9" strokeDasharray="3 3" />
-                        <line x1={paddingX} y1={290} x2={paddingX + plotW} y2={290} stroke="#f1f5f9" strokeDasharray="3 3" />
-                        <line x1={paddingX} y1={360} x2={paddingX + plotW} y2={360} stroke="#e2e8f0" strokeWidth="1" />
-                        
-                        {/* Relleno bajo la línea de velocidad */}
-                        {wpmAreaPath && <path d={wpmAreaPath} fill="url(#speedCombinedGrad)" />}
-                        
-                        {/* Línea de Velocidad */}
-                        {wpmPath && <path d={wpmPath} fill="none" stroke="#3e5c76" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
-                        
-                        {/* Línea de Precisión (discontinua y muy sutil) */}
-                        {precPath && <path d={precPath} fill="none" stroke="#22c55e" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.45" />}
-                        
-                        {/* Puntos y etiquetas */}
-                        {points.map((p, idx) => (
-                            <g key={idx}>
-                                {/* Velocidad (Punto azul) */}
-                                <circle cx={p.x} cy={p.y_wpm} r="4" fill="#3e5c76" stroke="#fff" strokeWidth="1.5" />
-                                <text x={p.x} y={p.y_wpm - 8} fontSize="9" fontWeight="bold" fill="#3e5c76" textAnchor="middle" className="font-mono">
-                                    {Math.round(p.wpm)}
-                                </text>
-                                
-                                {/* Precisión (Punto verde) */}
-                                <circle cx={p.x} cy={p.y_prec} r="4.5" fill="#22c55e" stroke="#fff" strokeWidth="1.5" />
-                                <text x={p.x} y={p.y_prec - 8} fontSize="9" fontWeight="bold" fill="#16a34a" textAnchor="middle" className="font-mono">
-                                    {Math.round(p.precision)}%
-                                </text>
-                                
-                                {/* Etiqueta del Eje X (Fecha/Hora) */}
-                                <text x={p.x} y="385" fontSize="9" fill="#94a3b8" textAnchor="middle">
-                                    {p.timeOnly}
-                                </text>
-                            </g>
-                        ))}
-                    </svg>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 // ==========================================
 // COMPONENTE: PANTALLA DE RESULTADOS DETALLADOS
@@ -2547,7 +2330,7 @@ const HandsKeyboardInteractive = React.memo(({ expectedChar, anchorKey }) => {
     );
 });
 
-const Entrenamiento = ({ history: rawHistory, onAddHistory }) => {
+const Entrenamiento = ({ history: rawHistory, onAddHistory, theme }) => {
     const history = Array.isArray(rawHistory) ? rawHistory : [];
     const [lessonId, setLessonId] = useState(1);
     const [phase, setPhase] = useState('menu'); // menu, typing, results, replay, intro
@@ -3298,7 +3081,7 @@ const Entrenamiento = ({ history: rawHistory, onAddHistory }) => {
                             setEndIndex={setEndIndex}
                             filteredAttempts={filteredAttempts}
                         />
-                        <EvolutionCharts filteredAttempts={filteredAttempts} />
+                        <EvolutionCharts filteredAttempts={filteredAttempts} theme={theme} />
                     </div>
                 </ErrorBoundary>
             )}
@@ -4617,7 +4400,7 @@ export default function App() {
                     onReset={() => setActiveTab('simulador')}
                 >
                     {activeTab === 'simulador' && <Simulador />}
-                    {activeTab === 'entrenamiento' && <Entrenamiento history={history} onAddHistory={handleAddHistory} />}
+                    {activeTab === 'entrenamiento' && <Entrenamiento history={history} onAddHistory={handleAddHistory} theme={theme} />}
                     {activeTab === 'teoria' && <PreparacionTeorica />}
                 </ErrorBoundary>
             </main>
