@@ -20,8 +20,13 @@ export function parseMetric(val, fallback = 0) {
     if (typeof val === 'string') {
         const trimmed = val.trim();
         if (!trimmed) return fallback;
-        const parsed = parseFloat(trimmed.replace(',', '.'));
-        return Number.isFinite(parsed) ? parsed : fallback;
+        const normalized = trimmed.replace(',', '.');
+        const match = normalized.match(/[-+]?\d*\.?\d+/);
+        if (match) {
+            const parsed = parseFloat(match[0]);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        }
+        return fallback;
     }
     return fallback;
 }
@@ -56,6 +61,30 @@ export function safeMin(arr, fallback = 0) {
 }
 
 /**
+ * Extrae la precisión porcentual de un intento de forma tolerante a múltiples esquemas.
+ * @param {object} attempt - Intento de práctica o simulador
+ * @returns {number} Precisión entre 0 y 100
+ */
+export function getAttemptPrecision(attempt) {
+    if (!attempt || typeof attempt !== 'object') return 0;
+    if (attempt.precision !== undefined || attempt.accuracy !== undefined) {
+        return parseMetric(attempt.precision ?? attempt.accuracy, 0);
+    }
+    if (attempt.correctChars !== undefined && attempt.errorChars !== undefined) {
+        const correct = parseMetric(attempt.correctChars, 0);
+        const errors = parseMetric(attempt.errorChars, 0);
+        const total = correct + errors;
+        return total > 0 ? (correct / total) * 100 : 0;
+    }
+    if (attempt.enteredWords !== undefined && parseMetric(attempt.enteredWords, 0) > 0) {
+        const entered = parseMetric(attempt.enteredWords, 1);
+        const correct = parseMetric(attempt.correct, 0);
+        return (correct / entered) * 100;
+    }
+    return 0;
+}
+
+/**
  * Formatea una duración en segundos a formato legible MM:SS
  * @param {number|string} secs - Duración en segundos o preformateada
  * @returns {string} Formato MM:SS
@@ -73,7 +102,7 @@ export function formatDur(secs) {
 
 /**
  * Formatea la marca de tiempo completa (fecha y hora exacta)
- * Soporta timestamps ISO, epoch numéricos, strings con hora separada y claves alternativas.
+ * Soporta objetos Date, timestamps ISO, epoch numéricos, strings con hora separada y claves alternativas.
  * @param {object} attempt - Objeto de intento
  * @returns {string} Fecha y hora legible
  */
@@ -85,6 +114,18 @@ export function formatFullTimestamp(attempt) {
         const d = attempt.date || attempt.fecha;
         const t = attempt.time || attempt.hora || attempt.timeOnly;
         rawVal = t ? `${d} ${t}` : d;
+    }
+
+    // Instancia de Date válida
+    if (rawVal instanceof Date && !isNaN(rawVal.getTime())) {
+        return rawVal.toLocaleString('es-AR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
     }
 
     // Timestamp numérico (milisegundos epoch e.g. Date.now())
@@ -166,7 +207,7 @@ export function computeEvolutionSummary(attempts) {
         return Math.max(0, n);
     });
     const precisions = valid.map(a => {
-        const n = parseMetric(a?.precision ?? a?.accuracy, 0);
+        const n = getAttemptPrecision(a);
         return Math.max(0, Math.min(100, n));
     });
 
@@ -193,8 +234,10 @@ export function computeEvolutionSummary(attempts) {
  * @returns {number[]} Índices visibles
  */
 export function getVisibleLabelIndices(totalCount, maxLabels = 10) {
-    const total = Number(totalCount);
-    if (!Number.isFinite(total) || total <= 0) return [];
+    const rawTotal = Number(totalCount);
+    if (!Number.isFinite(rawTotal) || rawTotal <= 0) return [];
+    const total = Math.floor(rawTotal);
+    if (total <= 0) return [];
 
     const safeMax = Math.max(2, Number.isFinite(Number(maxLabels)) ? Math.floor(Number(maxLabels)) : 10);
     if (total <= safeMax) {
@@ -228,7 +271,8 @@ export function getVisibleLabelIndices(totalCount, maxLabels = 10) {
 export function getCubicBezierPath(points, tension = 0.25) {
     if (!points || !Array.isArray(points) || points.length === 0) return '';
     
-    const safeTension = Number.isFinite(Number(tension)) ? Number(tension) : 0.25;
+    const rawTension = Number.isFinite(Number(tension)) ? Number(tension) : 0.25;
+    const safeTension = Math.max(0, Math.min(1, rawTension));
 
     const sanitized = points
         .filter(p => p && typeof p === 'object')

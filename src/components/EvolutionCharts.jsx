@@ -11,6 +11,7 @@ import {
     getCubicBezierPath, 
     getPrecisionColor,
     parseMetric,
+    getAttemptPrecision,
     safeMin,
     safeMax
 } from './evolutionChartsUtils.js';
@@ -87,11 +88,10 @@ const SummaryPanel = ({ summary }) => {
  * Tooltip Flotante Estilizado Glassmorphism (R3)
  * Con anclaje direccional dinámico para evitar desbordes laterales en móviles (320px/480px).
  */
-const FloatingTooltip = ({ attempt, index, xPercent, yPercent }) => {
+const FloatingTooltip = ({ attempt, index, xPercent }) => {
     if (!attempt || index === null) return null;
 
     const x = Number.isFinite(Number(xPercent)) ? Number(xPercent) : 50;
-    const y = Number.isFinite(Number(yPercent)) ? Number(yPercent) : 35;
 
     // Anclaje horizontal adaptativo según proximidad a los bordes
     let alignClass = "-translate-x-1/2";
@@ -107,16 +107,21 @@ const FloatingTooltip = ({ attempt, index, xPercent, yPercent }) => {
         leftPos = `${Math.min(98, x)}%`;
     }
 
-    const topPos = `${Math.max(25, y)}%`;
-
     const wpmVal = Math.round(parseMetric(attempt.wpm, 0));
-    const precVal = Math.round(parseMetric(attempt.precision ?? attempt.accuracy, 0));
-    const errorsVal = Math.round(parseMetric(attempt.errorChars ?? attempt.errors ?? attempt.fallos, 0));
+    const precVal = Math.round(getAttemptPrecision(attempt));
+    const errorsVal = Math.round(parseMetric(
+        attempt.errorChars ?? attempt.errors ?? attempt.fallos ?? 
+        ((attempt.minorErrors !== undefined || attempt.majorErrors !== undefined) 
+            ? (parseMetric(attempt.minorErrors, 0) + parseMetric(attempt.majorErrors, 0)) 
+            : 0),
+        0
+    ));
+    const durVal = formatDur(attempt.duration ?? (attempt.timeSpentMinutes ? attempt.timeSpentMinutes * 60 : 0));
 
     return (
         <div 
-            className={`absolute z-30 pointer-events-none transition-all duration-150 ease-out transform -translate-y-full mb-3 ${alignClass}`}
-            style={{ left: leftPos, top: topPos }}
+            className={`absolute z-30 pointer-events-none transition-all duration-150 ease-out top-2 ${alignClass}`}
+            style={{ left: leftPos }}
         >
             <div className="bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-700/80 dark:border-slate-800 rounded-xl p-3 shadow-2xl text-white text-xs w-60 max-w-[calc(100vw-2rem)] space-y-2 select-none">
                 {/* Cabecera: Intento y Lección */}
@@ -161,7 +166,7 @@ const FloatingTooltip = ({ attempt, index, xPercent, yPercent }) => {
                             <Clock className="w-2.5 h-2.5 text-amber-400 shrink-0" /> Duración
                         </div>
                         <div className="text-xs font-mono font-bold text-amber-300 mt-0.5">
-                            {formatDur(attempt.duration)}
+                            {durVal}
                         </div>
                     </div>
 
@@ -237,7 +242,6 @@ const SpeedChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeChart,
                         attempt={activeAttempt} 
                         index={hoveredIndex} 
                         xPercent={activePercentX} 
-                        yPercent={35} 
                     />
                 )}
 
@@ -367,6 +371,16 @@ const SpeedChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeChart,
                                     onMouseEnter={() => { setHoveredIndex(idx); setActiveChart('speed'); }}
                                     onFocus={() => { setHoveredIndex(idx); setActiveChart('speed'); }}
                                     onBlur={() => { setHoveredIndex(null); setActiveChart(null); }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (hoveredIndex === idx && activeChart === 'speed') {
+                                            setHoveredIndex(null);
+                                            setActiveChart(null);
+                                        } else {
+                                            setHoveredIndex(idx);
+                                            setActiveChart('speed');
+                                        }
+                                    }}
                                     onTouchStart={(e) => {
                                         if (e.touches && e.touches.length > 1) return;
                                         e.stopPropagation();
@@ -445,7 +459,7 @@ const PrecisionChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCh
                 className="relative w-full overflow-visible"
                 onMouseLeave={() => { setHoveredIndex(null); setActiveChart(null); }}
                 onClick={(e) => {
-                    if (e.target.tagName !== 'circle' && e.target.tagName !== 'line') {
+                    if (e.target.tagName !== 'circle' && e.target.tagName !== 'line' && e.target.tagName !== 'rect') {
                         setHoveredIndex(null);
                         setActiveChart(null);
                     }
@@ -456,7 +470,6 @@ const PrecisionChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCh
                         attempt={activeAttempt} 
                         index={hoveredIndex} 
                         xPercent={activePercentX} 
-                        yPercent={35} 
                     />
                 )}
 
@@ -467,6 +480,39 @@ const PrecisionChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCh
                     role="img"
                     aria-label="Gráfico de evolución de precisión porcentual"
                 >
+                    <defs>
+                        {/* Gradientes modernos según el porcentaje (R2.2) */}
+                        <linearGradient id="precGrad-high" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#34d399" />
+                            <stop offset="100%" stopColor="#059669" />
+                        </linearGradient>
+                        <linearGradient id="precGrad-medium" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#fbbf24" />
+                            <stop offset="100%" stopColor="#d97706" />
+                        </linearGradient>
+                        <linearGradient id="precGrad-low" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#fb7185" />
+                            <stop offset="100%" stopColor="#e11d48" />
+                        </linearGradient>
+                        {/* Gradientes de tallo lollipop */}
+                        <linearGradient id="precStem-high" x1="0" y1="1" x2="0" y2="0">
+                            <stop offset="0%" stopColor="#10b981" stopOpacity="0.2" />
+                            <stop offset="100%" stopColor="#10b981" stopOpacity="0.95" />
+                        </linearGradient>
+                        <linearGradient id="precStem-medium" x1="0" y1="1" x2="0" y2="0">
+                            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.2" />
+                            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.95" />
+                        </linearGradient>
+                        <linearGradient id="precStem-low" x1="0" y1="1" x2="0" y2="0">
+                            <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.2" />
+                            <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.95" />
+                        </linearGradient>
+                        <filter id="precGlow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                    </defs>
+
                     {/* Líneas de Guía de Referencia */}
                     {[100, 95, 90, minScale].filter((v, i, a) => a.indexOf(v) === i).map((lvl, i) => {
                         const yPos = yBase - ((lvl - minScale) / range) * chartH;
@@ -510,15 +556,15 @@ const PrecisionChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCh
 
                         return (
                             <g key={idx} className="transition-all duration-200">
-                                {/* Tallo del lollipop */}
+                                {/* Tallo del lollipop con gradiente */}
                                 <line 
                                     x1={cx} 
                                     y1={yBase} 
                                     x2={cx} 
                                     y2={cy} 
-                                    stroke={color.fill} 
+                                    stroke={`url(#precStem-${color.tier})`} 
                                     strokeWidth={isHovered ? "2.5" : "1.8"} 
-                                    opacity={hoveredIndex === null || isHovered ? 0.85 : 0.4}
+                                    opacity={hoveredIndex === null || isHovered ? 0.95 : 0.45}
                                 />
 
                                 {/* Halo de selección en hover (R2.2) */}
@@ -533,14 +579,15 @@ const PrecisionChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCh
                                     />
                                 )}
 
-                                {/* Cabeza del lollipop */}
+                                {/* Cabeza del lollipop con gradiente de color según porcentaje (R2.2) */}
                                 <circle 
                                     cx={cx} 
                                     cy={cy} 
                                     r={circleR} 
-                                    fill={color.fill} 
+                                    fill={`url(#precGrad-${color.tier})`} 
                                     stroke="#ffffff" 
                                     strokeWidth={isHovered ? "2" : "1.5"} 
+                                    filter={isHovered ? "url(#precGlow)" : undefined}
                                     className="cursor-pointer transition-all duration-150"
                                 />
 
@@ -595,6 +642,16 @@ const PrecisionChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCh
                                     onMouseEnter={() => { setHoveredIndex(idx); setActiveChart('precision'); }}
                                     onFocus={() => { setHoveredIndex(idx); setActiveChart('precision'); }}
                                     onBlur={() => { setHoveredIndex(null); setActiveChart(null); }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (hoveredIndex === idx && activeChart === 'precision') {
+                                            setHoveredIndex(null);
+                                            setActiveChart(null);
+                                        } else {
+                                            setHoveredIndex(idx);
+                                            setActiveChart('precision');
+                                        }
+                                    }}
                                     onTouchStart={(e) => {
                                         if (e.touches && e.touches.length > 1) return;
                                         e.stopPropagation();
@@ -729,7 +786,6 @@ const CombinedChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCha
                         attempt={activeAttempt} 
                         index={hoveredIndex} 
                         xPercent={activePercentX} 
-                        yPercent={30} 
                     />
                 )}
 
@@ -743,8 +799,8 @@ const CombinedChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCha
                     <defs>
                         {/* Gradiente translúcido premium bajo la curva de velocidad (R2.3) */}
                         <linearGradient id="combinedSpeedGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#0284c7" stopOpacity="0.25" />
-                            <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
+                            <stop offset="0%" stopColor={isDark ? "#38bdf8" : "#0284c7"} stopOpacity="0.25" />
+                            <stop offset="100%" stopColor={isDark ? "#38bdf8" : "#0284c7"} stopOpacity="0.0" />
                         </linearGradient>
 
                         {/* Filtro de brillo sutil para puntos destacados */}
@@ -774,7 +830,7 @@ const CombinedChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCha
                                     x={paddingLeft - 8} 
                                     y={yPos + 3} 
                                     fontSize="8.5" 
-                                    fill="#0284c7" 
+                                    fill={isDark ? "#38bdf8" : "#0284c7"} 
                                     fontWeight="600" 
                                     textAnchor="end" 
                                     className="font-mono"
@@ -786,7 +842,7 @@ const CombinedChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCha
                                     x={paddingLeft + chartW + 8} 
                                     y={yPos + 3} 
                                     fontSize="8.5" 
-                                    fill="#059669" 
+                                    fill={isDark ? "#34d399" : "#059669"} 
                                     fontWeight="600" 
                                     textAnchor="start" 
                                     className="font-mono"
@@ -807,7 +863,7 @@ const CombinedChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCha
                         <path 
                             d={wpmSmoothPath} 
                             fill="none" 
-                            stroke="#0284c7" 
+                            stroke={isDark ? "#38bdf8" : "#0284c7"} 
                             strokeWidth="3.2" 
                             strokeLinecap="round" 
                             strokeLinejoin="round" 
@@ -947,7 +1003,7 @@ const CombinedChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCha
                                                 y={wpmTextY} 
                                                 fontSize={isHovered ? "10" : "8"} 
                                                 fontWeight="bold" 
-                                                fill="#0284c7" 
+                                                fill={isHovered ? (isDark ? "#7dd3fc" : "#0284c7") : (isDark ? "#38bdf8" : "#0284c7")} 
                                                 textAnchor="middle" 
                                                 className="font-mono"
                                             >
@@ -958,7 +1014,7 @@ const CombinedChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCha
                                                 y={precTextY} 
                                                 fontSize={isHovered ? "10" : "8"} 
                                                 fontWeight="bold" 
-                                                fill="#059669" 
+                                                fill={isHovered ? (isDark ? "#6ee7b7" : "#059669") : (isDark ? "#34d399" : "#059669")} 
                                                 textAnchor="middle" 
                                                 className="font-mono"
                                             >
@@ -990,32 +1046,58 @@ const CombinedChart = ({ validAttempts, hoveredIndex, setHoveredIndex, activeCha
                                     </text>
                                 )}
 
-                                {/* Área de interacción vertical accesible por ratón, toque y teclado */}
-                                <rect 
-                                    x={N === 1 ? paddingLeft : p.x - (chartW / (N - 1 || 1)) / 2} 
-                                    y={paddingTop} 
-                                    width={N === 1 ? chartW : chartW / (N - 1 || 1)} 
-                                    height={chartH + paddingBottom} 
-                                    fill="transparent" 
-                                    className="cursor-pointer focus:outline-none"
-                                    tabIndex="0"
-                                    role="button"
-                                    aria-label={`Intento ${idx + 1}: ${Math.round(p.wpm)} PPM, ${Math.round(p.prec)}% de precisión`}
-                                    onMouseEnter={() => { setHoveredIndex(idx); setActiveChart('combined'); }}
-                                    onFocus={() => { setHoveredIndex(idx); setActiveChart('combined'); }}
-                                    onBlur={() => { setHoveredIndex(null); setActiveChart(null); }}
-                                    onTouchStart={(e) => {
-                                        if (e.touches && e.touches.length > 1) return;
-                                        e.stopPropagation();
-                                        if (hoveredIndex === idx && activeChart === 'combined') {
-                                            setHoveredIndex(null);
-                                            setActiveChart(null);
-                                        } else {
-                                            setHoveredIndex(idx);
-                                            setActiveChart('combined');
-                                        }
-                                    }}
-                                />
+                                {/* Área de interacción vertical accesible por ratón, toque y teclado (delimitada exactamente) */}
+                                {(() => {
+                                    const step = chartW / (N - 1 || 1);
+                                    const rectX = N === 1 
+                                        ? paddingLeft 
+                                        : idx === 0 
+                                            ? paddingLeft 
+                                            : p.x - step / 2;
+                                    const rectW = N === 1 
+                                        ? chartW 
+                                        : (idx === 0 || idx === N - 1) 
+                                            ? step / 2 
+                                            : step;
+
+                                    return (
+                                        <rect 
+                                            x={rectX} 
+                                            y={paddingTop} 
+                                            width={rectW} 
+                                            height={chartH + paddingBottom} 
+                                            fill="transparent" 
+                                            className="cursor-pointer focus:outline-none"
+                                            tabIndex="0"
+                                            role="button"
+                                            aria-label={`Intento ${idx + 1}: ${Math.round(p.wpm)} PPM, ${Math.round(p.prec)}% de precisión`}
+                                            onMouseEnter={() => { setHoveredIndex(idx); setActiveChart('combined'); }}
+                                            onFocus={() => { setHoveredIndex(idx); setActiveChart('combined'); }}
+                                            onBlur={() => { setHoveredIndex(null); setActiveChart(null); }}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (hoveredIndex === idx && activeChart === 'combined') {
+                                                    setHoveredIndex(null);
+                                                    setActiveChart(null);
+                                                } else {
+                                                    setHoveredIndex(idx);
+                                                    setActiveChart('combined');
+                                                }
+                                            }}
+                                            onTouchStart={(e) => {
+                                                if (e.touches && e.touches.length > 1) return;
+                                                e.stopPropagation();
+                                                if (hoveredIndex === idx && activeChart === 'combined') {
+                                                    setHoveredIndex(null);
+                                                    setActiveChart(null);
+                                                } else {
+                                                    setHoveredIndex(idx);
+                                                    setActiveChart('combined');
+                                                }
+                                            }}
+                                        />
+                                    );
+                                })()}
                             </g>
                         );
                     })}

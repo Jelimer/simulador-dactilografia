@@ -18,6 +18,7 @@ import {
     getCubicBezierPath, 
     getPrecisionColor,
     parseMetric,
+    getAttemptPrecision,
     safeMin,
     safeMax
 } from '../../src/components/evolutionChartsUtils.js';
@@ -140,6 +141,26 @@ describe('Tier 1 - Rediseño Premium de EvolutionCharts', () => {
                 assert.deepEqual(res1, [0, 19]);
             }, 'No debe arrojar RangeError ni entrar en bucle infinito');
         });
+
+        test('1.7 Soporte riguroso para objetos Date reales en formatFullTimestamp', () => {
+            const realDate = new Date(2026, 8, 8, 12, 30, 45);
+            const resDate = formatFullTimestamp({ timestamp: realDate });
+            assert.ok(!resDate.includes('no disponible'), 'No debe retornar fecha no disponible para Date');
+            assert.ok(resDate.includes('2026') || resDate.includes('08'), 'Debe incluir año o mes formateado');
+
+            const resDateProp = formatFullTimestamp({ date: realDate });
+            assert.ok(!resDateProp.includes('no disponible'), 'Debe soportar Date en propiedad date');
+        });
+
+        test('1.8 Sanitización de totalCount con valores flotantes en getVisibleLabelIndices', () => {
+            const resFloat = getVisibleLabelIndices(15.5, 10);
+            assert.ok(Array.isArray(resFloat));
+            assert.equal(resFloat[0], 0);
+            assert.equal(resFloat[resFloat.length - 1], 14, 'El último índice debe ser 14 para 15 elementos');
+            for (const idx of resFloat) {
+                assert.ok(Number.isInteger(idx), `El índice ${idx} debe ser un entero`);
+            }
+        });
     });
 
     describe('R2. Calidad Visual, Curvas Bézier Suaves y Código Cromático Lollipop', () => {
@@ -237,6 +258,41 @@ describe('Tier 1 - Rediseño Premium de EvolutionCharts', () => {
             assert.equal(parseMetric(null, 10), 10);
             assert.equal(parseMetric(undefined, 0), 0);
         });
+
+        test('2.4 parseMetric extrae valores numéricos con prefijos de texto ("PPM 50", "Velocidad: 45 PPM")', () => {
+            assert.equal(parseMetric('PPM 50'), 50);
+            assert.equal(parseMetric('Velocidad: 45 PPM'), 45);
+            assert.equal(parseMetric('Precisión: 97.5%'), 97.5);
+            assert.equal(parseMetric('Inválido', 15), 15);
+        });
+
+        test('2.5 PrecisionChart define e implementa gradientes SVG para indicadores lollipop (R2.2)', async () => {
+            const { createServer } = await import('vite');
+            const server = await createServer({ server: { middlewareMode: true } });
+            try {
+                const mod = await server.ssrLoadModule('./src/components/EvolutionCharts.jsx');
+                const EvolutionCharts = mod.default;
+                const React = await import('react');
+                const { renderToString } = await import('react-dom/server');
+
+                const attempts = [
+                    { id: '1', wpm: 50, precision: 98, duration: 60, timestamp: '2026-09-08' },
+                    { id: '2', wpm: 40, precision: 92, duration: 60, timestamp: '2026-09-08' },
+                    { id: '3', wpm: 30, precision: 85, duration: 60, timestamp: '2026-09-08' }
+                ];
+
+                const html = renderToString(React.createElement(EvolutionCharts, { filteredAttempts: attempts, theme: 'light' }));
+                assert.ok(html.includes('id="precGrad-high"'), 'Debe definir gradiente para nivel alto');
+                assert.ok(html.includes('id="precGrad-medium"'), 'Debe definir gradiente para nivel medio');
+                assert.ok(html.includes('id="precGrad-low"'), 'Debe definir gradiente para nivel bajo');
+                assert.ok(html.includes('url(#precGrad-high)'), 'Lollipop alto debe usar gradiente de color');
+                assert.ok(html.includes('url(#precGrad-medium)'), 'Lollipop medio debe usar gradiente de color');
+                assert.ok(html.includes('url(#precGrad-low)'), 'Lollipop bajo debe usar gradiente de color');
+                assert.ok(html.includes('url(#precStem-'), 'Tallos deben usar gradiente de color');
+            } finally {
+                await server.close();
+            }
+        });
     });
 
     describe('R3. Métricas de Resumen Estadístico y Formato de Duración', () => {
@@ -311,6 +367,23 @@ describe('Tier 1 - Rediseño Premium de EvolutionCharts', () => {
                 const min = safeMin(massive, 100);
                 assert.equal(min, 5);
             }, 'safeMax y safeMin deben resistir 200.000 elementos sin RangeError');
+        });
+
+        test('3.6 getAttemptPrecision soporta múltiples esquemas de datos (entrenamiento y simulador)', () => {
+            // Esquema normal de entrenamiento
+            assert.equal(getAttemptPrecision({ precision: 96 }), 96);
+            assert.equal(getAttemptPrecision({ accuracy: 94 }), 94);
+
+            // Derivado de correctChars y errorChars
+            assert.equal(getAttemptPrecision({ correctChars: 90, errorChars: 10 }), 90);
+
+            // Derivado de simulador judicial (correct y enteredWords)
+            assert.equal(getAttemptPrecision({ correct: 140, enteredWords: 140 }), 100);
+            assert.equal(Math.round(getAttemptPrecision({ correct: 135, enteredWords: 140 })), 96);
+
+            // Nulos o corruptos
+            assert.equal(getAttemptPrecision(null), 0);
+            assert.equal(getAttemptPrecision({}), 0);
         });
     });
 
@@ -505,6 +578,72 @@ describe('Tier 1 - Rediseño Premium de EvolutionCharts', () => {
                 // Navegabilidad por teclado
                 assert.ok(html.includes('tabindex="0"'), 'Los elementos interactivos deben admitir foco de teclado tabIndex="0"');
                 assert.ok(html.includes('role="button"'), 'Los elementos interactivos deben declararse con role="button"');
+            } finally {
+                await server.close();
+            }
+        });
+
+        test('5.6 CombinedChart delimita los rects de interacción dentro del área de trazado sin coordenadas negativas ni desborde', async () => {
+            const { createServer } = await import('vite');
+            const server = await createServer({ server: { middlewareMode: true } });
+            try {
+                const mod = await server.ssrLoadModule('./src/components/EvolutionCharts.jsx');
+                const EvolutionCharts = mod.default;
+                const React = await import('react');
+                const { renderToString } = await import('react-dom/server');
+
+                // Probar con N=2 y N=5 (casos críticos de borde exterior)
+                for (const count of [2, 5, 10]) {
+                    const attempts = Array.from({ length: count }, (_, i) => ({
+                        id: String(i + 1),
+                        wpm: 50 + i * 5,
+                        precision: 90 + i,
+                        duration: 60,
+                        timestamp: '2026-09-08'
+                    }));
+
+                    const html = renderToString(React.createElement(EvolutionCharts, { filteredAttempts: attempts, theme: 'light' }));
+                    
+                    // Extraer los rects de interacción en CombinedChart (aquellos con role="button")
+                    const rectMatches = [...html.matchAll(/<rect[^>]*x="([^"]+)"[^>]*width="([^"]+)"[^>]*role="button"[^>]*>/g)];
+                    // El último grupo de count rects corresponde a CombinedChart
+                    const combinedRects = rectMatches.slice(-count);
+                    assert.equal(combinedRects.length, count, `Debe haber ${count} rects de interacción en CombinedChart`);
+
+                    for (const m of combinedRects) {
+                        const xVal = parseFloat(m[1]);
+                        const wVal = parseFloat(m[2]);
+                        assert.ok(xVal >= 44.9, `N=${count}: x=${xVal} no debe ser menor que paddingLeft (45)`);
+                        assert.ok(xVal + wVal <= 595.1, `N=${count}: x+w=${xVal + wVal} no debe superar el límite derecho (595)`);
+                    }
+                }
+            } finally {
+                await server.close();
+            }
+        });
+
+        test('5.7 Soporte cromático adaptativo de alto contraste en Modo Oscuro y Claro', async () => {
+            const { createServer } = await import('vite');
+            const server = await createServer({ server: { middlewareMode: true } });
+            try {
+                const mod = await server.ssrLoadModule('./src/components/EvolutionCharts.jsx');
+                const EvolutionCharts = mod.default;
+                const React = await import('react');
+                const { renderToString } = await import('react-dom/server');
+
+                const attempts = [
+                    { id: '1', wpm: 50, precision: 95, duration: 60, timestamp: '2026-09-08' }
+                ];
+
+                // 1. Dark Mode
+                const darkHtml = renderToString(React.createElement(EvolutionCharts, { filteredAttempts: attempts, theme: 'dark' }));
+                assert.ok(darkHtml.includes('#38bdf8'), 'Modo oscuro debe usar #38bdf8 para contraste superior en PPM');
+                assert.ok(darkHtml.includes('#34d399'), 'Modo oscuro debe usar #34d399 para contraste superior en precisión');
+
+                // 2. Light Mode
+                const lightHtml = renderToString(React.createElement(EvolutionCharts, { filteredAttempts: attempts, theme: 'light' }));
+                assert.ok(lightHtml.includes('#0284c7'), 'Modo claro debe usar #0284c7 para legibilidad nítida en PPM');
+                assert.ok(lightHtml.includes('#059669'), 'Modo claro debe usar #059669 para legibilidad nítida en precisión');
             } finally {
                 await server.close();
             }
